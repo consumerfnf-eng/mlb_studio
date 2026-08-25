@@ -361,7 +361,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
             <div style="flex:1"><label class="fld">카테고리</label><select id="cat-parent" class="inp"><option>OUTERWEAR</option><option>TOP</option><option>BOTTOMS</option><option>SHOES</option></select></div>
             <div style="flex:1.2"><label class="fld">서브</label><select id="cat-sub" class="inp"></select></div>
           </div>
-          <div class="sectlabel">1 · 베이스 라인 <span id="prevlabel" class="chip pine"></span> <span class="hint" style="margin:0">— 모델·포즈·나머지 스타일링을 유지할 원본</span></div>
+          <div class="sectlabel">1 · 베이스 라인 <span class="hint" style="margin:0;color:var(--ink-45)">(선택 — 없으면 레퍼런스만으로 생성)</span> <span id="prevlabel" class="chip pine"></span> <span class="hint" style="margin:0">— 모델·포즈·나머지 스타일링을 유지할 원본</span></div>
           <div id="pick-lines" class="pickbar"></div>
           <div class="sectlabel">2 · 레퍼런스 <span class="hint" style="margin:0">— 선택 카테고리 디자인을 채용 (여러 장)</span></div>
           <div id="pick-refs" class="pickbar"></div>
@@ -449,7 +449,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
   <section class="view" id="v-gallery">
     <p class="eyebrow">Gallery</p>
     <h1 class="title">생성 갤러리</h1>
-    <p class="sub">생성 결과를 모아봅니다. 카드를 눌러 모델 변경 · 코디 변경 · SHEER/SHIMMER 재조절. 로고는 기본으로 합성됩니다.</p>
+    <p class="sub">생성 결과를 모아봅니다. 카드를 눌러 모델 변경 · 코디 & 디테일 수정 · SHEER/SHIMMER 재조절. 로고는 기본으로 합성됩니다.</p>
     <div class="row" style="justify-content:space-between;margin-bottom:10px">
       <div class="pillrow" id="gal-filter"></div>
       <div class="pillrow" id="gal-life" style="margin-top:6px"></div>
@@ -785,6 +785,7 @@ function computePlan(){
   if(modelMode==='product'){
     // SHOES product shot — base line + references, NO model/person
     if(line){images.push(line.dataUrl);roles.push(`MLB base form — source of the ${noun} product design (silhouette, proportions, colorway)`);}
+    else if(designRefs.length){const primary=designRefs[0];images.push(primary.dataUrl);roles.push(`PRIMARY ${noun} reference — build the ${noun} ON this shape, silhouette, proportions and colorway (this is the base form)`);pushList(refs.filter(r=>r!==primary));pushShell();return{line,model,refs,shell,images,roles,noun,hasModel:false,modelMode,refLed:true,balance:bal};}
     pushList(refs);pushShell();
   }else if(modelMode==='image'){
     images.push(model.dataUrl);roles.push('THE MODEL to keep and dress — the output MUST show this exact person (face, hair, skin tone, body), wearing the new garment');
@@ -899,7 +900,7 @@ function jsonToPrompt(J,plan){
   return S.join(' ');
 }
 function rolesToText(roles){return roles.map((r,i)=>`image ${i+1}: ${r}`).join('. ');}
-function updatePromptPrev(){const plan=computePlan();$('#promptprev').textContent=jsonToPrompt(currentJSON(),plan);$('#btn-gen').disabled=!state.pick.line;}
+function updatePromptPrev(){const plan=computePlan();$('#promptprev').textContent=jsonToPrompt(currentJSON(),plan);$('#btn-gen').disabled=!(state.pick.line||state.pick.refs.size);}
 
 /* ---------- OpenAI ---------- */
 async function openaiEdit(prompt,imgs,n){
@@ -942,7 +943,7 @@ async function analyzeRefs(){
 
 /* ---------- generate ---------- */
 async function doGenerate(){
-  if(!state.pick.line){toast('베이스 라인을 선택하세요.');return;}
+  if(!state.pick.line && !state.pick.refs.size){toast('베이스 라인 또는 레퍼런스를 최소 1개 선택하세요.');return;}
   const plan=computePlan(),J=currentJSON(),prompt=jsonToPrompt(J,plan);
   const n=Math.max(1,Math.min(4,+($('#gen-n').value||state.settings.genCount||2)));
   const pv=$('#gen-preview');pv.classList.remove('multi');pv.innerHTML=`<div class="load"><div class="spinner"></div><span>생성 중… ${n}장</span></div>`;$('#btn-gen').disabled=true;
@@ -954,8 +955,8 @@ async function doGenerate(){
       for(let i=0;i<raws.length;i++){
         const raw=raws[i];
         const logoUrl = isShoeGen ? raw : (state.settings.logoDefault?await applyLogo(raw):raw);
-        const g={id:uid(),name:`${plan.line.name} · ${J.target_season} ${J.category.parent}${team?' ['+team+']':''}${raws.length>1?' #'+(i+1):''}`,season:J.target_season,
-          dataUrl:raw,logoUrl,sourceLineId:plan.line.id,refIds:plan.refs.map(r=>r.id),modelId:plan.model?plan.model.id:null,fabricId:plan.shell?plan.shell.id:null,
+        const g={id:uid(),name:`${plan.line?plan.line.name:(plan.refs[0]?plan.refs[0].name:'신규')} · ${J.target_season} ${J.category.parent}${team?' ['+team+']':''}${raws.length>1?' #'+(i+1):''}`,season:J.target_season,
+          dataUrl:raw,logoUrl,sourceLineId:plan.line?plan.line.id:null,refIds:plan.refs.map(r=>r.id),modelId:plan.model?plan.model.id:null,fabricId:plan.shell?plan.shell.id:null,
           category:J.category,keep:J.keep,replace:J.replace,adopt:J.adopt_from_ref,team,shot:isShoeGen?'product':'look',
           sheer:+$('#sheer').value,shimmer:+$('#shimmer').value,balance:+$('#balance').value,
           designJSON:J,prompt:promptUsed,extra:J.notes,parentId:null,lifestyle:'',createdAt:Date.now()+items.length*7};
@@ -1505,13 +1506,13 @@ function galleryGrid(){
   if(!items.length){grid.innerHTML=`<div class="empty" style="grid-column:1/-1">${state.galLife!=='all'||state.galFilter!=='all'?'해당 조건의 생성물이 없습니다.':'아직 생성물이 없습니다. 생성 탭에서 만들어보세요.'}</div>`;return;}
   const showLogo=$('#showlogo').checked;
   grid.innerHTML=items.map(g=>{const life=g.lifestyle?`<span class="lifetag">${esc(g.lifestyle)}</span>`:'';
-    const bits=[esc(g.season)];if(g.category)bits.push(esc(g.category.parent));if(g.team)bits.push(esc(g.team));if(g.shot==='look'&&g.category&&g.category.parent==='SHOES')bits.push('착장');else if(g.shot==='product')bits.push('제품');if(g.parentId)bits.push('edit');
+    const bits=[esc(g.season)];if(g.category)bits.push(esc(g.category.parent));if(g.team)bits.push(esc(g.team));if(g.shot==='worn')bits.push('착장');else if(g.shot==='product')bits.push('제품');if(g.parentId&&!g.worn)bits.push('edit');
     const tg=g.uploaded?[esc(g.season),'업로드'].filter(Boolean).join(' · '):bits.join(' · ');
     return`<div class="card" data-gid="${g.id}">${life}<button class="x" data-galdel="${g.id}">✕</button><span class="thumb" style="background-image:url('${showLogo&&g.logoUrl?g.logoUrl:g.dataUrl}')"></span><div class="meta"><div class="nm">${esc(g.name)}</div><div class="tg">${tg}</div></div></div>`;}).join('');
 }
 
 /* ---------- compare ---------- */
-function compareSelect(){const sel=$('#cmp-select');const items=state.gallery.filter(g=>g.sourceLineId).sort((a,b)=>b.createdAt-a.createdAt);sel.innerHTML=`<option value="">— 선택 —</option>`+items.map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('');}
+function compareSelect(){const sel=$('#cmp-select');const items=state.gallery.filter(g=>g.sourceLineId&&!g.worn).sort((a,b)=>b.createdAt-a.createdAt);sel.innerHTML=`<option value="">— 선택 —</option>`+items.map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('');}
 function renderCompare(gid){
   const box=$('#cmp-body');if(!gid){box.innerHTML='';return;}
   const g=state.gallery.find(x=>x.id===gid),line=state.lines.find(l=>l.id===g.sourceLineId);
@@ -1564,8 +1565,8 @@ function openEdit(gid){
         <div id="edit-models" class="cards" style="grid-template-columns:repeat(auto-fill,minmax(80px,1fr))"></div>
         <button class="btn sm" id="edit-model-go" style="margin-top:8px">${isShoe(editG)?'선택 모델로 착장샷 생성':'선택 모델로 재생성'}</button>
         ${isShoe(editG)?`<label class="row" id="wrap-poseonly" style="font-size:12px;color:var(--ink-70);gap:6px;margin-top:8px"><input type="checkbox" id="edit-poseonly"> 포즈만 참고 <span class="hint" style="margin:0">(얼굴·옷은 설정의 K-pop 아이돌 프롬프트로 새로 생성)</span></label>`:''}
-        <div class="sectlabel">코디 변경</div><input id="edit-cody" class="inp" placeholder="예: 와이드 데님 + 니하이 부츠 + 레더 토트">
-        <button class="btn sm" id="edit-cody-go" style="margin-top:8px">코디 변경 생성</button>
+        <div class="sectlabel">코디 & 디테일 수정</div><input id="edit-cody" class="inp" placeholder="예: 와이드 데님 + 니하이 부츠 + 레더 토트 / 소매 짧게, 밑창 볼드">
+        <button class="btn sm" id="edit-cody-go" style="margin-top:8px">코디 & 디테일 수정 생성</button>
         <div class="sectlabel">마감 재조절</div>
         <div class="slider-wrap" style="margin-top:6px"><div class="slider-head"><span class="lab">Sheer</span><span class="val" id="e-sheer-v">${editG.sheer}</span></div><input type="range" id="e-sheer" min="0" max="100" value="${editG.sheer}"></div>
         <div class="slider-wrap"><div class="slider-head"><span class="lab">Shimmer 광택</span><span class="val" id="e-shimmer-v">${editG.shimmer}</span></div><input type="range" id="e-shimmer" min="0" max="100" value="${editG.shimmer}"></div>
@@ -1617,8 +1618,8 @@ async function runEdit(kind,opt){
   const cur=state.gallery.find(g=>g.id===editShown)||editG;let prompt,imgs=[cur.dataUrl];
   if(kind==='worn'){const m=state.models.find(x=>x.id===opt.modelId);imgs=[m.dataUrl,cur.dataUrl];const life=cur.lifestyle?`${cur.lifestyle} `:'';
     if(opt.poseOnly){const idol=(state.settings.baseModelPrompt||BASE_MODEL_DEFAULT).trim();
-      prompt=`Full-body MLB ${life}lifestyle lookbook photograph. Use image 1 ONLY as a pose/composition reference — copy the body pose, stance, limb position and camera framing from image 1, but do NOT copy that person's face, hair, skin or clothing. The subject/model is a NEWLY generated person described here: ${idol}. Dress this new model in a coordinated MLB outfit suited to a ${cur.lifestyle||'sportive'} lifestyle. CRITICAL — the footwear MUST be the exact shoe shown in image 2 and NOTHING ELSE: reproduce that exact shoe design, silhouette, colorway, materials, sole, laces and every detail with 100% fidelity as if pasted from image 2 onto the model's feet at correct scale and perspective. Do NOT redesign, restyle, recolor, swap or invent any different shoe — both feet wear the identical image-2 shoe. Clean minimal studio background, soft editorial lighting, shoes fully visible and in sharp focus. Do not render legible logo text.`;}
-    else{prompt=`Full-body MLB ${life}lifestyle lookbook photograph. The person is the EXACT model shown in image 1 — keep their face, hair, skin tone, body AND their exact pose, stance and camera framing from image 1 unchanged; do NOT invent a new pose. Only change their footwear: they are WEARING the exact ${'sneakers'} shown in image 2 on their feet — reproduce the footwear silhouette, colorway, sole and details faithfully and at correct scale. Keep or lightly complete a coordinated MLB outfit suited to a ${cur.lifestyle||'sportive'} lifestyle without altering the pose. Clean minimal studio background, soft lighting, shoes clearly visible. Do not render legible logo text.`;}}
+      prompt=`Full-body MLB ${life}lifestyle lookbook photograph. Use image 1 ONLY as a pose/composition reference — copy the body pose, stance, limb position and camera framing from image 1, but do NOT copy that person's face, hair, skin or clothing. The subject/model is a NEWLY generated person described here: ${idol}. Dress this new model in a coordinated MLB outfit suited to a ${cur.lifestyle||'sportive'} lifestyle. CRITICAL — the footwear MUST be the exact shoe shown in image 2 and NOTHING ELSE: reproduce that exact shoe design, silhouette, colorway, materials, sole and every detail with 100% fidelity as if pasted from image 2 onto the model's feet at correct scale and perspective. Preserve the exact upper construction of image 2: do NOT add a tongue, laces, eyelets or straps that are not visible in image 2 — if it is a strap style (e.g. Mary-Jane), keep only that strap and keep the top of the foot open exactly as in image 2. Do NOT redesign, restyle, recolor, swap or invent any different shoe — both feet wear the identical image-2 shoe. Clean minimal studio background, soft editorial lighting, shoes fully visible and in sharp focus. Do not render legible logo text.`;}
+    else{prompt=`Full-body MLB ${life}lifestyle lookbook photograph. The person is the EXACT model shown in image 1 — keep their face, hair, skin tone, body AND their exact pose, stance and camera framing from image 1 unchanged; do NOT invent a new pose. Only change their footwear: they are WEARING the exact shoe shown in image 2 on their feet — reproduce the shoe silhouette, colorway, sole and every detail faithfully at correct scale. Preserve the exact upper construction of image 2: do NOT add a tongue, laces, eyelets or straps that are not visible in image 2 — if it is a strap style (e.g. Mary-Jane), keep only that strap and keep the top of the foot open exactly as in image 2. Keep or lightly complete a coordinated MLB outfit suited to a ${cur.lifestyle||'sportive'} lifestyle without altering the pose. Clean minimal studio background, soft lighting, shoes clearly visible. Do not render legible logo text.`;}}
   else if(kind==='model'){const m=state.models.find(x=>x.id===opt.modelId);imgs.push(m.dataUrl);prompt='Keep the garment in the first image EXACTLY the same (identical design, color, construction). The output MUST depict the exact person from the SECOND image — their face, hair, skin tone and body — replacing the first image model entirely. Only the pose may follow the first image. Clean studio lighting, neutral background. Do not render legible logo text.';}
   else if(kind==='cody')prompt=`Keep the MLB main garment identical. Restyle only the coordinating items — the other clothing, footwear and accessories — to: ${opt.text}. Keep the same model and framing. Do not render legible logo text.`;
   else prompt=`Keep the garment design, silhouette and model identical. Re-render only the surface finish and padding — fabric sheer: ${sheerText(opt.sheer)}; surface: ${shimmerText(opt.shimmer)}; down fill volume: ${volumeText(opt.volume)}. Keep the original color. Do not render legible logo text.`;
@@ -1630,7 +1631,7 @@ async function runEdit(kind,opt){
       const logoUrl=(kind!=='worn'&&state.settings.logoDefault)?await applyLogo(raw):raw;
       const ng={id:uid(),name:cur.name+' ·'+(kind==='model'?'M':kind==='cody'?'C':kind==='worn'?'착장':'F'),season:cur.season,dataUrl:raw,logoUrl,
         sourceLineId:cur.sourceLineId,refIds:cur.refIds,modelId:(kind==='model'||kind==='worn')?opt.modelId:cur.modelId,fabricId:cur.fabricId,
-        category:cur.category,keep:cur.keep,replace:cur.replace,adopt:cur.adopt,lifestyle:cur.lifestyle||'',team:cur.team||null,shot:kind==='worn'?'look':(cur.shot||'look'),
+        category:cur.category,keep:cur.keep,replace:cur.replace,adopt:cur.adopt,lifestyle:cur.lifestyle||'',team:cur.team||null,shot:kind==='worn'?'worn':(cur.shot||'look'),worn:kind==='worn',editKind:kind,
         sheer:kind==='finish'?opt.sheer:cur.sheer,shimmer:kind==='finish'?opt.shimmer:cur.shimmer,volume:kind==='finish'?opt.volume:cur.volume,balance:cur.balance,
         designJSON:cur.designJSON,prompt,extra:cur.extra,parentId:root,createdAt:Date.now()};
       state.gallery.push(ng);await storePut('gallery',ng);lastShown=ng.id;
