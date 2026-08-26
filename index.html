@@ -1066,7 +1066,7 @@ function libGrid(store){
   const selMode=filtered&&state.libSelMode[store];
   grid.innerHTML=items.map(it=>{
     const sales=store==='lines'?salesFor(it):[];
-    const _b=sales.filter(s=>s.rank<=10).map(s=>`<span class="rankbadge ${s.newest?'rnew':'rold'}">${s.year}' #${s.rank}</span>`).join('');
+    const _b=sales.filter(s=>s.rank<=10).map(s=>`<span class="rankbadge ${s.newest?'rnew':'rold'}">${s.year}' #${s.rank}${s.nonSeason?' 연중':''}</span>`).join('');
     const rb=_b?`<div class="rankbadges">${_b}</div>`:'';
     const sa=sales.length?`<div class="salerow">`+sales.map(s=>`<span class="saleamt ${s.newest?'rnew':'rold'} ${s.rank<=10?'':'dim'}">${esc(s.season)} ${s.year}' ${esc(s.amtStr)}${s.rank<=10?` (#${s.rank})`:''}</span>`).join('')+`</div>`:'';
     const on=selMode&&state.libSel[store].has(it.id);
@@ -1321,7 +1321,7 @@ function openArchive(store){
     gridEl.innerHTML=items.map(it=>{
       const on=isLines?state.pick.line===it.id:state.pick.refs.has(it.id);
       const sales=isLines?salesFor(it):[];
-      const _b=sales.filter(s=>s.rank<=10).map(s=>`<span class="rankbadge ${s.newest?'rnew':'rold'}">${s.year}' #${s.rank}</span>`).join('');
+      const _b=sales.filter(s=>s.rank<=10).map(s=>`<span class="rankbadge ${s.newest?'rnew':'rold'}">${s.year}' #${s.rank}${s.nonSeason?' 연중':''}</span>`).join('');
       const rb=_b?`<div class="rankbadges">${_b}</div>`:'';
       const sa=sales.length?`<div class="salerow">`+sales.map(s=>`<span class="saleamt ${s.newest?'rnew':'rold'} ${s.rank<=10?'':'dim'}">${esc(s.season)} ${s.year}' ${esc(s.amtStr)}</span>`).join('')+`</div>`:'';
       const isTrend=!isLines&&trendActive(it);
@@ -1723,13 +1723,16 @@ function salesFor(it){
     const sameHalf=half&&seasonHalf(r.season)===half;
     if(!sameSeason&&!sameHalf)return;
     const pri=sameSeason?2:1;
-    const cur=best[r.year];
-    if(!cur||pri>cur._pri||(pri===cur._pri&&r.rank<cur.rank))best[r.year]={...r,_pri:pri};
+    const key=r.year+'|'+(r.bucket||'S');          // 연중(N)·시즌(S/F) 따로 유지
+    const cur=best[key];
+    if(!cur||pri>cur._pri||(pri===cur._pri&&r.rank<cur.rank))best[key]={...r,_pri:pri};
   });
-  const years=Object.keys(best).sort();          // 연도 오름차순
-  const latest2=years.slice(-2);                  // 존재하는 것 중 가장 최근 2개만
-  const newest=latest2[latest2.length-1];
-  return latest2.map(y=>({...best[y],newest:y===newest}));
+  const items=Object.values(best);
+  const years=[...new Set(items.map(r=>r.year))].sort();  // 존재 연도 오름차순
+  const latest2=new Set(years.slice(-2));                 // 가장 최근 2개 연도만
+  const newestY=[...latest2].sort().pop();
+  return items.filter(r=>latest2.has(r.year)).sort((a,b)=>(a.year===b.year?(a.bucket>b.bucket?1:-1):(a.year<b.year?-1:1)))
+    .map(r=>({...r,newest:r.year===newestY}));
 }
 function parseSales(text){
   const lines=(text||'').split(/\r?\n/).map(l=>l.replace(/\s+$/,'')).filter(l=>l.trim());
@@ -1742,12 +1745,23 @@ function parseSales(text){
   const rows=[];
   for(let i=start;i<lines.length;i++){
     const cols=split(lines[i]).map(s=>s.trim());
-    const sesn=col(cols,'SESN',0),pname=col(cols,'PRDT_NM',4),amt=col(cols,'SALE_AMT',5),amtStr=col(cols,'SALE_AMT_STR',9),share=col(cols,'SHARE_PCT',8),year=(col(cols,'YEAR',10)||'').replace(/[^0-9]/g,'').slice(-2);
+    const stype=(col(cols,'SESN_TYPE','')||'').toUpperCase();
+    const sesn=col(cols,'SESN',1),pname=col(cols,'PRDT_NM',5),amt=col(cols,'SALE_AMT',6),amtStr=col(cols,'SALE_AMT_STR',10),share=col(cols,'SHARE_PCT',9);
     if(!pname)continue;
-    rows.push({season:normSeason(sesn)||sesn.toUpperCase(),year:year||'',name:pname,normName:normNm(pname),amt:parseFloat((amt||'').replace(/[^0-9.]/g,''))||0,amtStr:amtStr||'',share:parseFloat(share)||0});
+    // 연도: YEAR 컬럼 있으면 사용, 없으면 SESN(24S/24N/24F…)에서 앞 2자리 추출
+    let year=(col(cols,'YEAR',-1)||'').replace(/[^0-9]/g,'').slice(-2);
+    if(!year){const ym=/(\d{2})/.exec(sesn||'');year=ym?ym[1]:'';}
+    // 시즌: 24S→24SS, 24F→24FW. N(연중)은 SESN_TYPE(SS/FW)으로 반기 결정
+    const letter=(/(\d{2})\s*([A-Z])/i.exec(sesn||'')||[])[2]||'';
+    const isN=letter.toUpperCase()==='N';
+    let season=normSeason(sesn);
+    if(!season){const half=(stype==='FW'||/FW|F$/i.test(sesn))?'FW':'SS';season=year+half;}
+    const bucket=isN?'N':'S'; // 연중(N)과 시즌(S/F) 랭킹 분리
+    rows.push({season,year:year||'',bucket,nonSeason:isN,name:pname,normName:normNm(pname),
+      amt:parseFloat((amt||'').replace(/[^0-9.]/g,''))||0,amtStr:amtStr||'',share:parseFloat(share)||0});
   }
-  // (시즌,연도)별 매출순 랭킹
-  const grp={};rows.forEach(r=>{const k=r.season+'|'+r.year;(grp[k]=grp[k]||[]).push(r);});
+  // (시즌,연도,버킷)별 매출순 랭킹 — 연중/시즌 따로
+  const grp={};rows.forEach(r=>{const k=r.season+'|'+r.year+'|'+r.bucket;(grp[k]=grp[k]||[]).push(r);});
   Object.values(grp).forEach(arr=>{arr.sort((a,b)=>b.amt-a.amt);arr.forEach((r,idx)=>r.rank=idx+1);});
   return{rows,count:rows.length};
 }
