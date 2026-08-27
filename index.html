@@ -220,6 +220,9 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .grpsec .gtitle{font-size:14px;font-weight:800}
 .grpsec .grpgrid{margin-top:4px}
 .grpsec .grphidden{display:none}
+.gp-list{display:flex;flex-direction:column;gap:6px;margin:6px 0 4px;max-height:260px;overflow:auto}
+.gp-list .gp-pick{width:100%}
+.gp-or{font-size:12px;color:var(--ink-45);text-align:center;margin:12px 0 6px;position:relative}
 .grpcard{position:relative}
 #login-gate{position:fixed;inset:0;z-index:9999;background:#F4F1E7;display:flex;align-items:center;justify-content:center;padding:20px}
 #login-gate.hidden{display:none}
@@ -679,7 +682,7 @@ async function storePut(s,v){
   }
   return putOf(s,v);
 }
-async function storeDel(s,id){if(cloudOn()&&CLOUD_STORES.includes(s)){try{await supaDelete(s,id);}catch(e){console.warn('cloud del fail',e.message);}delOf(s,id).catch(()=>{});return;}return delOf(s,id);}
+async function storeDel(s,id){if(cloudOn()&&CLOUD_STORES.includes(s)){let cloudOk=true;try{await supaDelete(s,id);}catch(e){cloudOk=false;console.warn('cloud del fail',e.message);}delOf(s,id).catch(()=>{});return cloudOk;}await delOf(s,id);return true;}
 async function toBlob(du){
   if(/^data:/.test(du))return dataUrlToBlob(du);
   // 1) 원본 직접 시도
@@ -1201,6 +1204,23 @@ function refById(id){ // id: ref id 또는 'prod_<num>'
   return state.refs.find(r=>r.id===id)||null;
 }
 function groupByName(name){return state.groups.find(g=>g.name.toLowerCase()===name.trim().toLowerCase());}
+function pickGroupName(cb){
+  const names=state.groups.slice().sort((a,b)=>b.createdAt-a.createdAt);
+  const list=names.map(g=>`<button class="btn sm gp-pick" data-gpname="${esc(g.name)}" style="justify-content:flex-start;border-color:#c0392b;color:#c0392b">🔥 ${esc(g.name)} <span style="opacity:.6;margin-left:4px">(${g.ids.length})</span></button>`).join('');
+  const html=`<div class="gp-modal-body">
+    ${names.length?`<div class="fld">기존 그룹에 추가</div><div class="gp-list">${list}</div><div class="gp-or">또는 새 그룹</div>`:'<div class="fld">새 그룹 이름</div>'}
+    <input id="gp-new" class="inp" placeholder="예: SNEAKERS LOAFER">
+    <div class="row" style="gap:8px;margin-top:12px;justify-content:flex-end"><button class="btn sm" id="gp-cancel">취소</button><button class="btn sm primary" id="gp-create">새 그룹 만들기</button></div>
+  </div>`;
+  $('#m-title').textContent='그룹 선택';
+  $('#m-body').innerHTML=html;
+  $('#modal').classList.add('on');
+  const close=()=>closeModal();
+  $$('.gp-pick').forEach(b=>b.onclick=()=>{const n=b.dataset.gpname;close();cb(n);});
+  $('#gp-create').onclick=()=>{const n=$('#gp-new').value.trim();if(!n){toast('그룹 이름을 입력하세요.');return;}close();cb(n);};
+  $('#gp-cancel').onclick=close;
+  const inp=$('#gp-new');if(inp)inp.addEventListener('keydown',e=>{if(e.key==='Enter'){const n=inp.value.trim();if(n){close();cb(n);}}});
+}
 function assignToGroup(name,ids){
   name=(name||'').trim();if(!name||!ids.length)return;
   let g=groupByName(name);
@@ -1208,13 +1228,13 @@ function assignToGroup(name,ids){
   ids.forEach(id=>{if(!g.ids.includes(id))g.ids.push(id);});
   saveGroups();
 }
-function itemGroups(it){const id=it._product?('prod_'+it.id):it.id;return state.groups.filter(g=>g.ids.includes(id)).map(g=>g.name);}
+function itemGroups(it){const id=it.id;return state.groups.filter(g=>g.ids.includes(id)).map(g=>g.name);}
 function renderGroups(){
   const box=$('#group-list');if(!box)return;
   if(!state.groups.length){box.innerHTML=`<div class="empty">아직 그룹이 없습니다. PRODUCT 탭에서 선택모드로 여러 개 고른 뒤 "그룹으로 묶기"를 누르세요.</div>`;return;}
   box.innerHTML=state.groups.slice().sort((a,b)=>b.createdAt-a.createdAt).map(g=>{
     const items=g.ids.map(refById).filter(Boolean);
-    const cardHTML=(it,hidden)=>`<div class="card ro grpcard${hidden?' grphidden':''}" data-ro="1"><button class="x" data-grpdel="${g.id}" data-gitem="${it._product?('prod_'+it.id):it.id}" title="그룹에서 빼기">✕</button><img class="pthumb" loading="lazy" src="${esc(it.dataUrl||'')}" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name||'')}</div></div></div>`;
+    const cardHTML=(it,hidden)=>`<div class="card ro grpcard${hidden?' grphidden':''}" data-ro="1"><button class="x" data-grpdel="${g.id}" data-gitem="${it.id}" title="그룹에서 빼기">✕</button><img class="pthumb" loading="lazy" src="${esc(it.dataUrl||'')}" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name||'')}</div></div></div>`;
     const cards=items.map((it,i)=>cardHTML(it,i>=7)).join('');
     const restN=Math.max(0,items.length-7);
     const more=restN?`<button class="btn xs grpmore-btn" data-grpmorebtn="${g.id}" style="margin-top:8px">＋ 더보기 (${restN})</button>`:'';
@@ -1404,7 +1424,7 @@ function openArchive(store){
     if(seasonF!=='ALL')items=items.filter(x=>x.season===seasonF);
     if(!isLines&&tagF!=='ALL')items=items.filter(r=>((r.tags||[]).includes(tagF)||(r.hashtags||[]).includes(tagF)));
     if(!isLines&&trendF)items=items.filter(r=>trendActive(r));
-    if(!isLines&&groupF){const g=(state.groups||[]).find(x=>x.id===groupF);const set=new Set(g?g.ids:[]);items=items.filter(r=>set.has(r._product?('prod_'+r.id):r.id));}
+    if(!isLines&&groupF){const g=(state.groups||[]).find(x=>x.id===groupF);const set=new Set(g?g.ids:[]);items=items.filter(r=>set.has(r.id));}
     if(q){const s=q.toLowerCase();items=items.filter(it=>((it.name||'')+' '+((it.tags||[]).join(' '))+' '+((it.hashtags||[]).join(' '))+' '+(it.brand||'')+' '+(it.season||'')+' '+(it.gender||'')+' '+(it.gcat||'')+' '+(it.shoeType||'')+' '+(it.category||'')+' '+(it.lifestyle||'')).toLowerCase().includes(s));}
     return items;
   }
@@ -1816,7 +1836,7 @@ function openMeta(store,id){
   if(store==='refs')f+=clsFields+`<div class="row" style="margin-top:12px"><div style="flex:1"><label class="fld">슈즈타입</label><select id="me-shoetype" class="inp"><option value="">—</option>${SHOE_TYPES.map(x=>`<option ${it.shoeType===x?'selected':''}>${x}</option>`).join('')}</select></div><div style="flex:1"><label class="fld">라이프스타일</label><select id="me-reflife" class="inp"><option value="">—</option>${LIFE_SHOES.map(x=>`<option ${it.lifestyle===x?'selected':''} value="${x}">${LIFE_SHORT[x]}</option>`).join('')}</select></div></div><label class="row" style="font-size:12px;color:#c0392b;gap:6px;margin-top:12px;font-weight:600"><input type="checkbox" id="me-trend" ${it.trend?'checked':''}> 트렌드 아이템 (빨간 테두리)</label><label class="fld" style="margin-top:10px">해시태그 (쉼표 또는 #로 구분)</label><input id="me-hashtags" class="inp" value="${esc((it.hashtags||[]).map(t=>'#'+t).join(' '))}" placeholder="#발레코어 #메쉬 #버건디"><label class="fld" style="margin-top:12px">태그 (쉼표)</label><input id="me-tags" class="inp" value="${esc((it.tags||[]).join(', '))}" placeholder="숄카라, 다이아퀼팅, 와이드…"><div class="row" style="margin-top:12px"><div style="flex:2"><label class="fld">랭킹 표기 (해시태그와 별도로 카드에 표시)</label><input id="me-rank" class="inp" value="${esc(it.rank||'')}" placeholder="예: 무신사 Rank #1"></div><div style="flex:1"><label class="fld">날짜 월·연 (비우면 업로드월)</label><input id="me-rankdate" class="inp" value="${esc(it.rankDate||'')}" placeholder="Jan '26 = 2026년 1월"></div></div><label class="row" style="font-size:12px;color:var(--ink-70);gap:6px;margin-top:12px"><input type="checkbox" id="me-detail" ${it.detail?'checked':''}> 디테일(하드웨어) 레퍼런스 — 벨트·스트링·지퍼풀러 등, 전체 실루엣이 아니라 이 디테일만 채용</label>`;
   if(store==='fabrics')f+=`<label class="fld" style="margin-top:12px">원단 타입</label><input id="me-ftype" class="inp" value="${esc(it.ftype||'')}" placeholder="glossy nylon / taffeta…">`;
   $('#m-body').innerHTML=`<div class="editgrid"><div><div class="preview zoomable" data-zoom="${esc(it.dataUrl||'')}"><img src="${it.dataUrl}"></div></div><div>${f}<div class="row" style="margin-top:16px;gap:8px"><button class="btn primary sm" id="me-save">저장</button><button class="btn sm" id="me-del" style="color:#c0392b;border-color:#e6b7b0">삭제</button></div></div></div>`;
-  $('#me-del').onclick=async()=>{if(!confirm('이 항목을 삭제할까요? 되돌릴 수 없습니다.'))return;await storeDel(store,it.id);state[store]=state[store].filter(x=>x.id!==it.id);libGrid(store);refreshCounts();renderPicks();if(store==='refs'&&state.refView==='matrix')renderRefMatrix();$('#modal').classList.remove('on');toast('삭제됨');};
+  $('#me-del').onclick=async()=>{if(!confirm('이 항목을 삭제할까요? 되돌릴 수 없습니다.'))return;const ok=await storeDel(store,it.id);state[store]=state[store].filter(x=>x.id!==it.id);libGrid(store);refreshCounts();renderPicks();if(store==='refs'&&state.refView==='matrix')renderRefMatrix();$('#modal').classList.remove('on');toast(ok?'삭제됨':'⚠ 화면에선 지웠지만 클라우드 삭제 실패 — 새로고침 시 다시 나타날 수 있어요');};
   $('#me-save').onclick=async()=>{it.name=$('#me-name').value.trim()||it.name;if(store==='lines'||store==='refs'){it.gender=$('#me-gender').value;it.gcat=$('#me-gcat').value;it.season=$('#me-season').value;if($('#me-rank'))it.rank=$('#me-rank').value.trim();if($('#me-rankdate'))it.rankDate=$('#me-rankdate').value.trim();}if(store==='lines'){it.category=$('#me-cat').value.trim();it.lifestyle=$('#me-life').value;if($('#me-salename'))it.saleName=$('#me-salename').value.trim();}if(store==='refs'){it.tags=$('#me-tags').value.split(',').map(s=>s.trim()).filter(Boolean);it.detail=$('#me-detail').checked;it.shoeType=$('#me-shoetype').value;it.lifestyle=$('#me-reflife').value;const wasTrend=it.trend;it.trend=$('#me-trend').checked;if(it.trend&&!wasTrend)it.trendAt=Date.now();if(!it.trend)it.trendAt=0;it.hashtags=normTags($('#me-hashtags').value.replace(/#/g,',').replace(/\s+/g,','));}if(store==='fabrics')it.ftype=$('#me-ftype').value.trim();await storePut(store,it);libGrid(store);if(store==='refs'&&state.refView==='matrix')renderRefMatrix();renderPicks();$('#modal').classList.remove('on');toast('저장됨');};
   $('#modal').classList.add('on');
 }
@@ -2085,8 +2105,8 @@ function wire(){
   document.addEventListener('change',e=>{if(e.target.id==='pf-unclass'){state.prodFilter.unclass=e.target.checked;state.prodShowAll=false;renderProducts();}});
 
   document.addEventListener('click',async e=>{
-    const del=e.target.closest('[data-del]');if(del){const st=del.dataset.store;await storeDel(st,del.dataset.del);state[st]=state[st].filter(x=>x.id!==del.dataset.del);libGrid(st);refreshCounts();renderPicks();return;}
-    const gd=e.target.closest('[data-galdel]');if(gd){await storeDel('gallery',gd.dataset.galdel);state.gallery=state.gallery.filter(x=>x.id!==gd.dataset.galdel);galleryGrid();compareSelect();return;}
+    const del=e.target.closest('[data-del]');if(del){const st=del.dataset.store;if(!confirm('이 사진을 삭제할까요? 되돌릴 수 없습니다.'))return;const ok=await storeDel(st,del.dataset.del);state[st]=state[st].filter(x=>x.id!==del.dataset.del);libGrid(st);refreshCounts();renderPicks();toast(ok?'삭제됨':'⚠ 화면에선 지웠지만 클라우드 삭제 실패 — 새로고침 시 다시 나타날 수 있어요');return;}
+    const gd=e.target.closest('[data-galdel]');if(gd){const ok=await storeDel('gallery',gd.dataset.galdel);state.gallery=state.gallery.filter(x=>x.id!==gd.dataset.galdel);galleryGrid();compareSelect();if(!ok)toast('⚠ 화면에선 지웠지만 클라우드 삭제 실패');return;}
     const zoomEl=e.target.closest('[data-zoom]');if(zoomEl){openLightbox(zoomEl.dataset.zoom);return;}
     const pdl=e.target.closest('[data-pdel]');if(pdl){deleteProduct(pdl.dataset.pdel);return;}
     const pcl=e.target.closest('[data-pclass]');if(pcl){openProductClass(pcl.dataset.pclass);return;}
@@ -2102,7 +2122,7 @@ function wire(){
     const sall=e.target.closest('[data-selall]');if(sall){const st=sall.dataset.selall;if(st==='refs'){state.refs.filter(uploadMatch).forEach(it=>state.libSel.refs.add(it.id));(state.products||[]).filter(prodMatch).forEach(p=>state.libSel.refs.add('prod_'+p.id));}else{state[st].filter(it=>matchFilter(st,it)).forEach(it=>state.libSel[st].add(it.id));}libGrid(st);return;}
     const sclr=e.target.closest('[data-selclear]');if(sclr){const st=sclr.dataset.selclear;state.libSel[st].clear();libGrid(st);return;}
     const sap=e.target.closest('[data-selapply]');if(sap){await bulkApply(sap.dataset.selapply);return;}
-    const sgrp=e.target.closest('[data-selgroup]');if(sgrp){const ids=[...state.libSel.refs];if(!ids.length){toast('먼저 항목을 선택하세요.');return;}const nm=prompt('그룹 이름 (예: SNEAKERS LOAFER)\n같은 이름이면 그 그룹에 추가됩니다.');if(!nm||!nm.trim())return;assignToGroup(nm,ids);state.libSel.refs.clear();state.libSelMode.refs=false;toast(`"${nm.trim()}" 그룹에 ${ids.length}개 추가됨`);setRefView('group');return;}
+    const sgrp=e.target.closest('[data-selgroup]');if(sgrp){const ids=[...state.libSel.refs];if(!ids.length){toast('먼저 항목을 선택하세요.');return;}pickGroupName(nm=>{assignToGroup(nm,ids);state.libSel.refs.clear();state.libSelMode.refs=false;toast(`"${nm}" 그룹에 ${ids.length}개 추가됨`);setRefView('group');});return;}
     const gmore=e.target.closest('[data-grpmorebtn]');if(gmore){const sec=document.querySelector('.grpsec[data-grpsec="'+gmore.dataset.grpmorebtn+'"]');if(sec){sec.querySelectorAll('.grphidden').forEach(el=>el.classList.remove('grphidden'));gmore.style.display='none';}return;}
     const gadd=e.target.closest('[data-grpadd]');if(gadd){groupUploadTarget=gadd.dataset.grpadd;uploadStore='__group';$('#hidden-file').click();return;}
     const gren=e.target.closest('[data-grprename]');if(gren){const g=state.groups.find(x=>x.id===gren.dataset.grprename);if(!g)return;const nm=prompt('그룹 이름 변경',g.name);if(nm&&nm.trim()){g.name=nm.trim();saveGroups();renderGroups();}return;}
