@@ -951,6 +951,10 @@ function jsonToPrompt(J,plan){
   const b=J.branding||{};
   if((cat.parent||'')!=='SHOES')S.push(`BRANDING — the garment surface must be COMPLETELY BLANK: no brand logo, no lettering, no woven label, no rubber patch, no emblem anywhere on the chest, sleeve, hood or body. Do NOT render any "MLB" text or any logo-like mark. The brand logo is composited separately in post-production, so keep every surface clean and unbranded.`);
   if(J.notes)S.push(`ADDITIONAL — ${J.notes}.`);
+  if((cat.parent||'')==='SHOES'){
+    S.push(`FOOTWEAR GENERATION RULES — REFERENCE ORIGINALITY: Follow the selected MLB baseline, references, adopted design elements, and balance settings as requested. Materials, mesh, quilting, stitching, functional details, color blocking, and general silhouette may be adopted from references. However, NEVER reproduce one reference shoe as a complete design. Do not copy its full side-panel composition, signature stripe system, exact overlay boundaries, logo geometry, or complete stitching map. Preserve the selected reference features, but change at least 2 recognizable structural elements such as the side-panel direction, overlay connection, mesh boundary, toe panel, heel counter, branding position, or outsole sidewall. Do not create a reference copy with only the logo or color replaced. Recombine the selected elements into a newly arranged MLB product.`);
+    S.push(`MARY JANE OPEN-INSTEP RULE — Apply only when the footwear type is Mary Jane or Mary Jane sneaker. The instep must be a real open cutout with no backing material. The wearer's foot or empty interior space must remain clearly visible through the entire instep opening. Laces are allowed only as open-instep lacing: laces may cross from loops or eyelets positioned along the left and right edges; laces must be suspended across the open instep; visible empty space must remain directly underneath the laces; laces may be combined with one transverse Mary Jane strap. Laces must not require or create: a shoe tongue, a tongue-shaped center panel, a padded backing panel, a quilted center panel, a mesh backing layer, a gusset beneath the laces, or a closed sneaker throat. The center of the instep must contain no continuous material from the toe vamp to the collar. Do not interpret "lacing" as conventional sneaker lacing. Use open-edge ghillie-style lacing across an empty instep opening. CRITICAL VISUAL TEST: From the top view, skin or empty interior space must be visible directly beneath and between every lace crossing. If any leather, mesh, quilting, padding, tongue, or vertical panel appears beneath the laces, the construction is incorrect and must be regenerated.`);
+  }
   if(rolesText)S.push(`IMAGE ROLES — ${rolesText}.`);
   S.push('Clean studio lighting, neutral seamless background, photorealistic, editorial luxury quality, sharp premium detail.');
   return S.join(' ');
@@ -1694,10 +1698,28 @@ function openEdit(gid){
         <div class="sectlabel">코디 & 디테일 수정</div><input id="edit-cody" class="inp" placeholder="예: 와이드 데님 + 니하이 부츠 + 레더 토트 / 소매 짧게, 밑창 볼드">
         <button class="btn sm" id="edit-cody-go" style="margin-top:8px">코디 & 디테일 수정 생성</button>
         <div class="sectlabel">마감 재조절</div>
+        ${isShoe(editG)?`
+        <label class="fld" style="margin-top:6px">솔 높이 / 형태</label>
+        <select id="e-sole" class="inp">
+          <option value="">그대로 유지</option>
+          <optgroup label="LINER / 플랫">
+            <option value="flat">플랫</option><option value="low">낮게</option><option value="mid">중간</option><option value="high">높게</option>
+          </optgroup>
+          <optgroup label="SNEAKERS">
+            <option value="chunky">CHUNKY (두꺼운 솔)</option><option value="heel">HEEL (굽)</option><option value="basic">BASIC (기본)</option>
+          </optgroup>
+        </select>
+        <label class="fld" style="margin-top:10px">로고 크기</label>
+        <select id="e-logosize" class="inp"><option value="">그대로</option><option value="small">작게</option><option value="mid">중간</option><option value="large">크게</option><option value="sole">솔에 걸치게</option></select>
+        <label class="fld" style="margin-top:10px">앞코</label>
+        <select id="e-toe" class="inp"><option value="">그대로</option><option value="sharp">날렵하게</option><option value="round">둥글게</option><option value="normal">일반</option></select>
+        <button class="btn sm" id="edit-shoefinish-go" style="margin-top:8px">신발 마감 재적용</button>
+        `:`
         <div class="slider-wrap" style="margin-top:6px"><div class="slider-head"><span class="lab">Sheer</span><span class="val" id="e-sheer-v">${editG.sheer}</span></div><input type="range" id="e-sheer" min="0" max="100" value="${editG.sheer}"></div>
         <div class="slider-wrap"><div class="slider-head"><span class="lab">Shimmer 광택</span><span class="val" id="e-shimmer-v">${editG.shimmer}</span></div><input type="range" id="e-shimmer" min="0" max="100" value="${editG.shimmer}"></div>
         <div class="slider-wrap"><div class="slider-head"><span class="lab">볼륨 · 충전재</span><span class="val" id="e-volume-v">${editG.volume!=null?editG.volume:50}</span></div><input type="range" id="e-volume" min="0" max="100" value="${editG.volume!=null?editG.volume:50}"><div class="slider-hint" id="e-volume-h"></div></div>
         <button class="btn sm" id="edit-finish-go" style="margin-top:8px">마감 재적용</button>
+        `}
         <div class="sectlabel">로고 입히기</div>
         <div class="hint" style="margin-top:2px">생성된 무지 이미지에 로고를 합성합니다. 설정에서 로고 PNG를 등록하면 그 엠블럼이, 없으면 텍스트가 들어갑니다.</div>
         <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">
@@ -1711,13 +1733,13 @@ function openEdit(gid){
   let chosenModel=null;
   $$('#edit-models .card').forEach(c=>c.onclick=()=>{$$('#edit-models .card').forEach(x=>x.classList.remove('sel'));c.classList.add('sel');chosenModel=c.dataset.emodel;});
   renderVersions();
-  $('#e-sheer').oninput=e=>$('#e-sheer-v').textContent=e.target.value;
-  $('#e-shimmer').oninput=e=>$('#e-shimmer-v').textContent=e.target.value;
-  $('#e-volume').oninput=e=>{$('#e-volume-v').textContent=e.target.value;$('#e-volume-h').textContent=volumeHint(e.target.value);};
-  $('#e-volume-h').textContent=volumeHint($('#e-volume').value);
+  if($('#e-sheer'))$('#e-sheer').oninput=e=>$('#e-sheer-v').textContent=e.target.value;
+  if($('#e-shimmer'))$('#e-shimmer').oninput=e=>$('#e-shimmer-v').textContent=e.target.value;
+  if($('#e-volume')){$('#e-volume').oninput=e=>{$('#e-volume-v').textContent=e.target.value;$('#e-volume-h').textContent=volumeHint(e.target.value);};$('#e-volume-h').textContent=volumeHint($('#e-volume').value);}
   $('#edit-model-go').onclick=()=>{if(!chosenModel){toast('모델을 선택하세요.');return;}const po=$('#edit-poseonly')&&$('#edit-poseonly').checked;runEdit(isShoe(editG)?'worn':'model',{modelId:chosenModel,poseOnly:po});};
   $('#edit-cody-go').onclick=()=>{const t=$('#edit-cody').value.trim();if(!t){toast('코디 내용을 입력하세요.');return;}runEdit('cody',{text:t});};
-  $('#edit-finish-go').onclick=()=>runEdit('finish',{sheer:+$('#e-sheer').value,shimmer:+$('#e-shimmer').value,volume:+$('#e-volume').value});
+  if($('#edit-finish-go'))$('#edit-finish-go').onclick=()=>runEdit('finish',{sheer:+$('#e-sheer').value,shimmer:+$('#e-shimmer').value,volume:+$('#e-volume').value});
+  if($('#edit-shoefinish-go'))$('#edit-shoefinish-go').onclick=()=>{const sole=$('#e-sole').value,logoSize=$('#e-logosize').value,toe=$('#e-toe').value;if(!sole&&!logoSize&&!toe){toast('조절할 항목을 하나 이상 선택하세요.');return;}runEdit('shoefinish',{sole,logoSize,toe});};
   if(editG.logoPos)$('#e-logopos').value=editG.logoPos;$('#e-logotone').checked=!!editG.logoTone;
   $('#e-logosize').oninput=e=>$('#e-logosize-v').textContent=e.target.value;
   $('#edit-logo-go').onclick=()=>applyLogoToCurrent({pos:$('#e-logopos').value,size:+$('#e-logosize').value,tone:$('#e-logotone').checked});
@@ -1747,15 +1769,25 @@ async function runEdit(kind,opt){
       prompt=`Full-body MLB ${life}lifestyle lookbook photograph. Use image 1 ONLY as a pose/composition reference — copy the body pose, stance, limb position and camera framing from image 1, but do NOT copy that person's face, hair, skin or clothing. The subject/model is a NEWLY generated person described here: ${idol}. Dress this new model in a coordinated MLB outfit suited to a ${cur.lifestyle||'sportive'} lifestyle. CRITICAL — the footwear MUST be the exact shoe shown in image 2 and NOTHING ELSE: reproduce that exact shoe design, silhouette, colorway, materials, sole and every detail with 100% fidelity as if pasted from image 2 onto the model's feet at correct scale and perspective. Preserve the exact upper construction of image 2: do NOT add a tongue, laces, eyelets or straps that are not visible in image 2 — if it is a strap style (e.g. Mary-Jane), keep only that strap and keep the top of the foot open exactly as in image 2. Do NOT redesign, restyle, recolor, swap or invent any different shoe — both feet wear the identical image-2 shoe. Clean minimal studio background, soft editorial lighting, shoes fully visible and in sharp focus. Do not render legible logo text.`;}
     else{prompt=`Full-body MLB ${life}lifestyle lookbook photograph. The person is the EXACT model shown in image 1 — keep their face, hair, skin tone, body AND their exact pose, stance and camera framing from image 1 unchanged; do NOT invent a new pose. Only change their footwear: they are WEARING the exact shoe shown in image 2 on their feet — reproduce the shoe silhouette, colorway, sole and every detail faithfully at correct scale. Preserve the exact upper construction of image 2: do NOT add a tongue, laces, eyelets or straps that are not visible in image 2 — if it is a strap style (e.g. Mary-Jane), keep only that strap and keep the top of the foot open exactly as in image 2. Keep or lightly complete a coordinated MLB outfit suited to a ${cur.lifestyle||'sportive'} lifestyle without altering the pose. Clean minimal studio background, soft lighting, shoes clearly visible. Do not render legible logo text.`;}}
   else if(kind==='model'){const m=state.models.find(x=>x.id===opt.modelId);imgs.push(m.dataUrl);prompt='Keep the garment in the first image EXACTLY the same (identical design, color, construction). The output MUST depict the exact person from the SECOND image — their face, hair, skin tone and body — replacing the first image model entirely. Only the pose may follow the first image. Clean studio lighting, neutral background. Do not render legible logo text.';}
-  else if(kind==='cody')prompt=`Keep the MLB main garment identical. Restyle only the coordinating items — the other clothing, footwear and accessories — to: ${opt.text}. Keep the same model and framing. Do not render legible logo text.`;
+  else if(kind==='cody')prompt=`Make a MINIMAL, LOCALIZED edit to this image. Keep the MLB main product IDENTICAL — same design, silhouette, color, construction and any visible logo/branding unchanged. Change ONLY what is requested: ${opt.text}. Keep the same model, face, pose, framing, background, lighting, colors and overall image quality/resolution exactly as in the original — do not re-render or restyle anything that was not requested.`;
+  else if(kind==='shoefinish'){
+    const parts=[];
+    const soleMap={flat:'a flat, minimal-height flat sole',low:'a low-profile sole',mid:'a medium-height sole',high:'a tall, elevated sole',chunky:'a thick CHUNKY exaggerated platform sole',heel:'a distinct raised HEEL (heeled sole)',basic:'a standard basic sneaker sole height'};
+    const logoMap={small:'make the branding logo on the shoe smaller and more subtle',mid:'make the branding logo on the shoe a medium, balanced size',large:'make the branding logo on the shoe larger and more prominent',sole:'extend the branding logo so it overlaps down onto the sole edge'};
+    const toeMap={sharp:'make the toe box sharper, sleeker and more pointed',round:'make the toe box rounder and fuller',normal:'use a normal standard toe box shape'};
+    if(opt.sole&&soleMap[opt.sole])parts.push('give it '+soleMap[opt.sole]);
+    if(opt.logoSize&&logoMap[opt.logoSize])parts.push(logoMap[opt.logoSize]);
+    if(opt.toe&&toeMap[opt.toe])parts.push(toeMap[opt.toe]);
+    prompt=`Keep this EXACT shoe — identical design, colorway, materials, upper construction, model/feet and background. Make ONLY these finishing adjustments: ${parts.join('; ')}. Change nothing else — keep the same camera angle, framing, lighting and image quality. Do not add or remove any parts that were not requested, and keep both shoes identical.`;
+  }
   else prompt=`Keep the garment design, silhouette and model identical. Re-render only the surface finish and padding — fabric sheer: ${sheerText(opt.sheer)}; surface: ${shimmerText(opt.shimmer)}; down fill volume: ${volumeText(opt.volume)}. Keep the original color. Do not render legible logo text.`;
   const prev=$('#edit-prev');prev.innerHTML=`<div class="load"><div class="spinner"></div><span>${kind==='worn'?'착장샷 생성 중…':'수정 중…'}</span></div>`;
   const nOut=1; // 착장샷은 항상 1장만 생성
   try{
     const raws=await openaiEdit(prompt,imgs,nOut);const root=editG.parentId||editG.id;let lastShown='';
     for(const raw of raws){
-      const logoUrl=(kind!=='worn'&&state.settings.logoDefault)?await applyLogo(raw):raw;
-      const ng={id:uid(),name:cur.name+' ·'+(kind==='model'?'M':kind==='cody'?'C':kind==='worn'?'착장':'F'),season:cur.season,dataUrl:raw,logoUrl,
+      const logoUrl=(kind!=='worn'&&kind!=='shoefinish'&&!isShoe(cur)&&state.settings.logoDefault)?await applyLogo(raw):raw;
+      const ng={id:uid(),name:cur.name+' ·'+(kind==='model'?'M':kind==='cody'?'C':kind==='worn'?'착장':kind==='shoefinish'?'S':'F'),season:cur.season,dataUrl:raw,logoUrl,
         sourceLineId:cur.sourceLineId,refIds:cur.refIds,modelId:(kind==='model'||kind==='worn')?opt.modelId:cur.modelId,fabricId:cur.fabricId,
         category:cur.category,keep:cur.keep,replace:cur.replace,adopt:cur.adopt,lifestyle:cur.lifestyle||'',team:cur.team||null,shot:kind==='worn'?'worn':(cur.shot||'look'),worn:kind==='worn',editKind:kind,
         sheer:kind==='finish'?opt.sheer:cur.sheer,shimmer:kind==='finish'?opt.shimmer:cur.shimmer,volume:kind==='finish'?opt.volume:cur.volume,balance:cur.balance,
