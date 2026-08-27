@@ -216,6 +216,19 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .tcard .tcname{font-size:10px;font-weight:600;margin-top:3px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tcard .tcsub{font-size:9px;color:var(--ink-45);line-height:1.2}
 .tcard .tcrank{font-size:9px;font-weight:800;color:#0a7d4b;line-height:1.25;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grpsec{border:2px solid #c0392b;border-radius:12px;padding:12px;margin-bottom:14px;background:rgba(192,57,43,.03)}
+.grpsec .gtitle{font-size:14px;font-weight:800}
+.grpsec .grpgrid{margin-top:4px}
+.grpcard{position:relative}
+#login-gate{position:fixed;inset:0;z-index:9999;background:#F4F1E7;display:flex;align-items:center;justify-content:center;padding:20px}
+#login-gate.hidden{display:none}
+.login-box{width:100%;max-width:360px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px 24px;box-shadow:var(--shadow);text-align:center}
+.login-box .inp{width:100%;margin:14px 0 0;text-align:center}
+.login-sub{font-size:13px;color:var(--ink-70);margin-bottom:4px}
+.login-remember{display:flex;align-items:center;gap:6px;justify-content:center;font-size:12px;color:var(--ink-70);margin:12px 0}
+.login-box .btn{width:100%;margin-top:4px}
+.login-err{color:#c0392b;font-size:12px;font-weight:700;margin-top:10px;min-height:16px}
+.login-note{font-size:11px;color:var(--ink-45);margin-top:14px;line-height:1.4}
 .tmore-btn{margin-top:8px}
 .card.trend{border:2px solid #c0392b;box-shadow:0 0 0 1px rgba(192,57,43,.15)}
 .card .htags{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
@@ -266,6 +279,18 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 </style>
 </head>
 <body>
+<div id="login-gate">
+  <div class="login-box">
+    <div class="wordmark" style="justify-content:center;margin-bottom:6px">MLB<small>AI Season Design Studio</small></div>
+    <div class="login-sub">F&amp;F 사내 전용 · 등록된 계정으로 로그인</div>
+    <input id="login-email" class="inp" type="email" placeholder="이메일" autocomplete="username">
+    <input id="login-pw" class="inp" type="password" placeholder="비밀번호" autocomplete="current-password">
+    <label class="login-remember"><input type="checkbox" id="login-remember" checked> 이 기기에서 로그인 유지</label>
+    <button class="btn primary" id="login-go">로그인</button>
+    <div id="login-err" class="login-err"></div>
+    <div class="login-note">계정은 관리자가 발급합니다. 접속이 필요하면 담당자에게 요청하세요.</div>
+  </div>
+</div>
 <header>
   <div class="bar">
     <div class="wordmark">MLB<small>AI Season Design Studio</small></div>
@@ -309,7 +334,8 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
         <div class="row" style="justify-content:space-between;align-items:center;margin:12px 0 0">
           <div class="seg" id="ref-view-seg">
             <button class="segbtn on" data-refview="product">PRODUCT</button>
-            <button class="segbtn" data-refview="matrix">매트릭스</button>
+            <button class="segbtn" data-refview="group">TREND GROUP</button>
+            <button class="segbtn" data-refview="matrix">MATRIX</button>
           </div>
           <button class="btn sm" id="ref-autoclass">AI 자동분류</button>
         </div>
@@ -335,6 +361,13 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
         <div id="ref-matrix-wrap" style="display:none;margin-top:14px">
           <div class="hint" style="margin-bottom:8px">행 = 슈즈타입 · 열 = 라이프스타일. 셀을 클릭하면 해당 조합만 크게 봅니다. 태그는 내 레퍼런스 카드 클릭으로 수정.</div>
           <div id="matrix-refs" style="overflow:auto"></div>
+        </div>
+        <div id="ref-group-wrap" style="display:none;margin-top:14px">
+          <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px">
+            <div class="hint" style="margin:0">PRODUCT에서 선택모드로 여러 개 고른 뒤 "그룹으로 묶기"를 누르면 여기 모여요. 그룹에 사진을 더 올리거나 이름을 바꿀 수 있어요.</div>
+            <button class="btn sm" id="grp-new-upload">＋ 새 그룹에 사진 올리기</button>
+          </div>
+          <div id="group-list"></div>
         </div>
       </div>
     </div>
@@ -546,7 +579,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
       </div>
       <label class="fld" style="margin-top:12px">anon public key</label>
       <input id="s-supakey" class="inp" type="password" placeholder="eyJhbGciOi...">
-      <div class="row" style="margin-top:12px"><button class="btn sm" id="btn-cloudtest">연결 테스트</button><button class="btn sm primary" id="btn-cloudmigrate">☁ 클라우드로 전부 다시 올리기 (재동기화)</button></div>
+      <div class="row" style="margin-top:12px"><button class="btn sm" id="btn-cloudtest">연결 테스트</button><button class="btn sm primary" id="btn-cloudmigrate">☁ 클라우드로 전부 다시 올리기 (재동기화)</button><button class="btn sm" id="btn-logout" style="color:#c0392b;border-color:#e6b7b0">로그아웃</button></div>
       <div class="hint" id="migrate-status" style="margin-top:6px"></div>
     </div>
     <div class="panel" style="margin-top:16px">
@@ -590,11 +623,11 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
    ============================================================ */
 
 /* ---------- storage ---------- */
-const STORES=['settings','lines','refs','models','fabrics','gallery','sales'];
+const STORES=['settings','lines','refs','models','fabrics','gallery','sales','groups'];
 let db=null,memMode=false;
-const mem={settings:new Map(),lines:new Map(),refs:new Map(),models:new Map(),fabrics:new Map(),gallery:new Map(),sales:new Map()};
+const mem={settings:new Map(),lines:new Map(),refs:new Map(),models:new Map(),fabrics:new Map(),gallery:new Map(),sales:new Map(),groups:new Map()};
 function openDB(){return new Promise(res=>{try{
-  const r=indexedDB.open('mlb_studio',3);
+  const r=indexedDB.open('mlb_studio',4);
   r.onupgradeneeded=e=>{const d=e.target.result;STORES.forEach(s=>{if(!d.objectStoreNames.contains(s))d.createObjectStore(s,{keyPath:'id'});});};
   r.onsuccess=e=>{db=e.target.result;res(true);};
   r.onerror=()=>{memMode=true;res(false);};r.onblocked=()=>{memMode=true;res(false);};
@@ -727,9 +760,9 @@ const state={
   pick:{line:null,refs:new Set(),model:null,fabric:null},
   brief:{keep:new Set(),replace:new Set(),adopt:new Set(),fabricType:'',shoeBal:{upper:40,sole:40},teams:new Set(['NY','LA'])},
   aiAttrs:{}, jsonDirty:false, galFilter:'all', galLife:'all',
-  libFilter:{lines:{gender:'ALL',gcat:'ALL',season:'ALL'},refs:{gender:'ALL',gcat:'ALL',season:'ALL'}},
+  libFilter:{lines:{gender:'ALL',gcat:'ALL',season:'ALL',shoetype:'ALL'},refs:{gender:'ALL',gcat:'ALL',season:'ALL'}},
   pu:{lines:{gender:'',gcat:'',season:''},refs:{gender:'',gcat:'',season:''},models:{gender:'',gcat:'',season:''},fabrics:{gender:'',gcat:'',season:''}},
-  libSelMode:{lines:false,refs:false}, libSel:{lines:new Set(),refs:new Set()}, refView:'product', mxSel:null, tagFilter:'', refTrendUpload:false, wcSeason:'',
+  libSelMode:{lines:false,refs:false}, libSel:{lines:new Set(),refs:new Set()}, refView:'product', mxSel:null, tagFilter:'', refTrendUpload:false, wcSeason:'', groups:[], groupFilter:'',
   products:[], prodLoaded:false, prodFilter:{season:'',brand:'',gender:'',fabric:'',search:''},
   salesRows:[], salesRaw:''
 };
@@ -1038,7 +1071,7 @@ function applyLogo(du){return applyLogoAt(du,{});}
 /* ---------- library render ---------- */
 function metaLine(store,it){
   const cls=[it.gender,it.gcat,it.season].filter(Boolean).join(' · ');
-  if(store==='lines')return[cls,it.category,it.lifestyle].filter(Boolean).join(' · ')||'라인';
+  if(store==='lines')return[cls,(it.gcat==='SHOES'&&it.shoeType)?it.shoeType:'',it.category,it.lifestyle].filter(Boolean).join(' · ')||'라인';
   if(store==='refs'){const mx=[it.shoeType,it.lifestyle&&(LIFE_SHORT[it.lifestyle]||it.lifestyle)].filter(Boolean).join(' · ');return((it.trend?'[TREND] ':'')+(it.detail?'[디테일] ':'')+([cls,mx,((it.tags&&it.tags.length)?it.tags.join(', '):'')].filter(Boolean).join(' · ')||'레퍼런스'));}
   if(store==='fabrics')return it.ftype||'원단';
   return '기본모델';
@@ -1053,7 +1086,7 @@ function renderBulkBar(store){
     <select id="pu-${store}-gcat" class="inp sm" data-pu="${store}" data-puk="gcat">${optionsHTML(GCAT_OPTS,pu.gcat)}</select>
     <select id="pu-${store}-season" class="inp sm" data-pu="${store}" data-puk="season">${optionsHTML(seasons,pu.season)}</select>
     <button class="btn xs ${sel?'primary':''}" data-selmode="${store}">${sel?'선택 완료':'선택 모드'}</button>
-    ${sel?`<button class="btn xs" data-selall="${store}">전체선택</button><button class="btn xs" data-selclear="${store}">해제</button><button class="btn xs primary" data-selapply="${store}">선택 ${n}개에 적용</button>`:''}
+    ${sel?`<button class="btn xs" data-selall="${store}">전체선택</button><button class="btn xs" data-selclear="${store}">해제</button><button class="btn xs primary" data-selapply="${store}">선택 ${n}개에 적용</button>${store==='refs'?`<button class="btn xs" data-selgroup="refs" style="border-color:#c0392b;color:#c0392b">🔥 그룹으로 묶기 (${n})</button>`:''}`:''}
   </div><div class="hint" style="margin-top:4px">위 성별·카테고리·시즌을 정하면 <b>새로 올리는 이미지</b>에 그대로 적용됩니다(빈 칸은 파일명 자동인식). ‘선택 모드’로 <b>기존 항목</b>을 골라 일괄 지정도 가능해요.</div>`;
 }
 function libGrid(store){
@@ -1097,7 +1130,7 @@ async function bulkApply(store){
   }
   state.libSel[store].clear();libGrid(store);toast(`${ids.length}개 항목에 적용됨${np?` (상품 ${np})`:''}`);
 }
-function matchFilter(store,it){const f=state.libFilter[store];if(store==='refs'){if(state.wcSeason&&it.season!==state.wcSeason)return false;if(state.tagFilter&&!(it.hashtags||[]).some(t=>t.toLowerCase()===state.tagFilter))return false;}if(!f)return true;return(f.gender==='ALL'||it.gender===f.gender)&&(f.gcat==='ALL'||it.gcat===f.gcat)&&(f.season==='ALL'||it.season===f.season);}
+function matchFilter(store,it){const f=state.libFilter[store];if(store==='refs'){if(state.wcSeason&&it.season!==state.wcSeason)return false;if(state.tagFilter&&!(it.hashtags||[]).some(t=>t.toLowerCase()===state.tagFilter))return false;}if(!f)return true;if(store==='lines'&&f.gcat==='SHOES'&&f.shoetype&&f.shoetype!=='ALL'&&(it.shoeType||'')!==f.shoetype)return false;return(f.gender==='ALL'||it.gender===f.gender)&&(f.gcat==='ALL'||it.gcat===f.gcat)&&(f.season==='ALL'||it.season===f.season);}
 function hasActiveFilter(store){const f=state.libFilter[store];return f&&(f.gender!=='ALL'||f.gcat!=='ALL'||f.season!=='ALL');}
 function chipGroup(store,axis,label,opts,current){
   return `<div class="chipgroup"><span class="chiplabel">${label}</span>`+[['ALL','전체'],...opts.map(o=>[o,o])].map(([v,l])=>`<button class="togglepill ${current===v?'on':''}" data-libstore="${store}" data-axis="${axis}" data-val="${v}">${esc(l)}</button>`).join('')+`</div>`;
@@ -1107,7 +1140,9 @@ function renderLibChips(store){
   const f=state.libFilter[store];
   const src=store==='refs'?allRefs():state[store];
   const seasons=[...new Set(src.map(x=>x.season).filter(Boolean))].sort();
-  el.innerHTML=chipGroup(store,'gender','성별',GENDER_OPTS,f.gender)+chipGroup(store,'gcat','카테고리',GCAT_OPTS,f.gcat)+chipGroup(store,'season','시즌',seasons,f.season);
+  let h=chipGroup(store,'gender','성별',GENDER_OPTS,f.gender)+chipGroup(store,'gcat','카테고리',GCAT_OPTS,f.gcat)+chipGroup(store,'season','시즌',seasons,f.season);
+  if(store==='lines'&&f.gcat==='SHOES')h+=chipGroup(store,'shoetype','슈즈타입',['ALL',...SHOE_TYPES],f.shoetype||'ALL');
+  el.innerHTML=h;
 }
 function refreshCounts(){['lines','refs','models','fabrics'].forEach(s=>$('#c-'+s).textContent=(s==='refs'?state.refs.length+(state.products?state.products.length:0):state[s].length));}
 /* ---------- PRODUCT catalog (Supabase-backed, image via URL) ---------- */
@@ -1148,6 +1183,40 @@ function productAsRef(p){
     fabric_group:p.fabric_group||'',top_hex:p.top_hex||'',category:p.category||'',rank:p.rank||'',rankDate:p.rank_date||'',_product:true,createdAt:0};
 }
 function allRefs(){return state.refs.concat((state.products||[]).map(productAsRef));}
+/* ---------- TREND GROUP ---------- */
+function saveGroups(){
+  const doc={groups:state.groups,updatedAt:Date.now()};
+  try{localStorage.setItem('mlb_groups',JSON.stringify(doc));}catch(e){}
+  try{putOf('groups',{id:'main',...doc});}catch(e){}
+  if(cloudOn()){supaPutRow('groups',{id:'main',data:{id:'main',...doc}}).catch(()=>{});}
+}
+function loadGroupsLocal(){try{const d=JSON.parse(localStorage.getItem('mlb_groups')||'null');if(d&&Array.isArray(d.groups))state.groups=d.groups;}catch(e){}}
+function refById(id){ // id: ref id 또는 'prod_<num>'
+  if(String(id).startsWith('prod_')){const pid=String(id).slice(5);const p=(state.products||[]).find(x=>String(x.id)===pid);return p?productAsRef(p):null;}
+  return state.refs.find(r=>r.id===id)||null;
+}
+function groupByName(name){return state.groups.find(g=>g.name.toLowerCase()===name.trim().toLowerCase());}
+function assignToGroup(name,ids){
+  name=(name||'').trim();if(!name||!ids.length)return;
+  let g=groupByName(name);
+  if(!g){g={id:uid(),name,ids:[],createdAt:Date.now()};state.groups.push(g);}
+  ids.forEach(id=>{if(!g.ids.includes(id))g.ids.push(id);});
+  saveGroups();
+}
+function itemGroups(it){const id=it._product?('prod_'+it.id):it.id;return state.groups.filter(g=>g.ids.includes(id)).map(g=>g.name);}
+function renderGroups(){
+  const box=$('#group-list');if(!box)return;
+  if(!state.groups.length){box.innerHTML=`<div class="empty">아직 그룹이 없습니다. PRODUCT 탭에서 선택모드로 여러 개 고른 뒤 "그룹으로 묶기"를 누르세요.</div>`;return;}
+  box.innerHTML=state.groups.slice().sort((a,b)=>b.createdAt-a.createdAt).map(g=>{
+    const items=g.ids.map(refById).filter(Boolean);
+    const cardHTML=it=>`<div class="card ro grpcard" data-ro="1"><button class="x" data-grpdel="${g.id}" data-gitem="${it._product?('prod_'+it.id):it.id}" title="그룹에서 빼기">✕</button><img class="pthumb" loading="lazy" src="${esc(it.dataUrl||'')}" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name||'')}</div></div></div>`;
+    const first=items.slice(0,7).map(cardHTML).join('');
+    const restItems=items.slice(7);
+    const rest=restItems.map(cardHTML).join('');
+    const more=restItems.length?`<div class="grpmore-wrap" data-grpmore="${g.id}" style="display:none">${rest}</div><button class="btn xs grpmore-btn" data-grpmorebtn="${g.id}" style="margin-top:8px">＋ 더보기 (${restItems.length})</button>`:'';
+    return`<div class="grpsec"><div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px"><div class="gtitle" style="color:#c0392b">🔥 ${esc(g.name)} <span class="k">(${items.length})</span></div><div class="row" style="gap:6px"><button class="btn xs" data-grpadd="${g.id}">＋ 사진 추가</button><button class="btn xs" data-grprename="${g.id}">이름변경</button><button class="btn xs" data-grpremove="${g.id}" style="color:#c0392b">그룹삭제</button></div></div><div class="cards lg grpgrid">${first||'<div class=hint>빈 그룹</div>'}</div>${more}</div>`;
+  }).join('');
+}
 /* TREND 표기는 지정 시점(trendAt, 없으면 createdAt)부터 1년만 유효. 상품(catalog)은 만료 없음 */
 function trendActive(it){if(!it||!it.trend)return false;if(it._product)return true;const t=it.trendAt||it.createdAt||0;if(!t)return true;return (Date.now()-t)<=365*864e5;}
 function fmtMon(ts){if(!ts)return'';const d=new Date(ts);return d.toLocaleString('en-US',{month:'short'})+" '"+String(d.getFullYear()%100).padStart(2,'0');}
@@ -1226,8 +1295,16 @@ function uploadMatch(r){
 function renderProducts(){
   const grid=$('#grid-refs');if(!grid)return;
   if(state.products&&state.products.length)buildProdFilters();
-  const uploads=state.refs.filter(uploadMatch).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)); // 내 레퍼런스: 최근 업로드순
-  const prods=state.products.filter(prodMatch).slice().sort((a,b)=>{const d=seasonRank(b.season)-seasonRank(a.season);return d||(Number(b.id)||0)-(Number(a.id)||0);}); // 상품: 시즌(날짜) 최신순, 동시즌은 최근 적재순
+  const pin=state.tagFilter; // 태그 클릭 시 해당 태그 아이템을 상단 고정(나머지는 아래 그대로)
+  const hasTag=(arr,t)=>t&&(arr||[]).some(x=>(x||'').toLowerCase()===t);
+  const uploads=state.refs.filter(uploadMatch).sort((a,b)=>{
+    if(pin){const pa=hasTag(a.hashtags,pin)?1:0,pb=hasTag(b.hashtags,pin)?1:0;if(pa!==pb)return pb-pa;}
+    return (b.createdAt||0)-(a.createdAt||0);
+  });
+  const prods=state.products.filter(prodMatch).slice().sort((a,b)=>{
+    if(pin){const pa=hasTag(a.hashtags,pin)?1:0,pb=hasTag(b.hashtags,pin)?1:0;if(pa!==pb)return pb-pa;}
+    const d=seasonRank(b.season)-seasonRank(a.season);return d||(Number(b.id)||0)-(Number(a.id)||0);
+  });
   const total=uploads.length+prods.length;const CAP=600;
   const cnt=$('#prod-count');if(cnt)cnt.textContent=`총 ${total} · 내 레퍼런스 ${uploads.length} · 상품 ${prods.length}${total>CAP?` (상위 ${CAP} 표시)`:''}`;
   if(!total){grid.innerHTML=`<div class="empty" style="grid-column:1/-1">조건에 맞는 항목이 없습니다. 위에서 레퍼런스를 올리거나 PRODUCT를 불러오세요.</div>`;return;}
@@ -1279,7 +1356,7 @@ function renderPicks(){
 /* ---------- ARCHIVE BROWSER ---------- */
 function openArchive(store){
   const isLines=store==='lines',multi=store==='refs';
-  let q='',genderF='ALL',gcatF='ALL',tagF='ALL',stF='ALL',trendF=false,seasonF=isLines?(prevSeason($('#season').value)||'ALL'):'ALL';
+  let q='',genderF='ALL',gcatF='ALL',tagF='ALL',stF='ALL',trendF=false,groupF='',seasonF=isLines?(prevSeason($('#season').value)||'ALL'):'ALL';
   $('#sheet').classList.add('wide');
   $('#m-title').textContent=isLines?'라인 아카이브':'레퍼런스 아카이브';
   $('#m-body').innerHTML=`
@@ -1299,8 +1376,16 @@ function openArchive(store){
     let h=grp('gender','성별',GENDER_OPTS,genderF)+grp('gcat','카테고리',GCAT_OPTS,gcatF);
     if(gcatF==='SHOES')h+=grp('shoetype','세부(슈즈타입)',SHOE_TYPES,stF); // SHOES 선택 시 세부 카테고리
     h+=grp('season','시즌',seasons,seasonF);
-    if(!isLines){const tags=[...new Set(allRefs().flatMap(r=>r.hashtags||r.tags||[]))].sort();if(tags.length)h+=grp('tag','태그',tags,tagF);
-      h+=`<div class="chipgroup"><span class="chiplabel">트렌드</span><button class="togglepill ${trendF?'on':''}" data-axis="trend" data-val="toggle" style="${trendF?'background:#c0392b;color:#fff;border-color:#c0392b':''}">🔥 트렌드만</button></div>`;}
+    if(!isLines){
+      const freq={};allRefs().forEach(r=>(r.hashtags||r.tags||[]).forEach(t=>{if(t)freq[t]=(freq[t]||0)+1;}));
+      const tags=Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).slice(0,20); // 상위 20개만
+      if(tags.length)h+=grp('tag','태그 (상위 20)',tags,tagF);
+      h+=`<div class="chipgroup"><span class="chiplabel">트렌드</span><button class="togglepill ${trendF?'on':''}" data-axis="trend" data-val="toggle" style="${trendF?'background:#c0392b;color:#fff;border-color:#c0392b':''}">🔥 트렌드만</button></div>`;
+      if(state.groups&&state.groups.length){
+        const chips=state.groups.slice().sort((a,b)=>b.createdAt-a.createdAt).map(g=>`<button class="chip ${groupF===g.id?'on':''}" data-axis="group" data-val="${g.id}" style="${groupF===g.id?'background:#c0392b;color:#fff;border-color:#c0392b':'border-color:#c0392b;color:#c0392b'}">🔥 ${esc(g.name)} (${g.ids.length})</button>`).join('');
+        h+=`<div class="chipgroup"><span class="chiplabel">TREND GROUP</span>${chips}</div>`;
+      }
+    }
     chipsEl.innerHTML=h;
   }
   function list(){
@@ -1311,6 +1396,7 @@ function openArchive(store){
     if(seasonF!=='ALL')items=items.filter(x=>x.season===seasonF);
     if(!isLines&&tagF!=='ALL')items=items.filter(r=>((r.tags||[]).includes(tagF)||(r.hashtags||[]).includes(tagF)));
     if(!isLines&&trendF)items=items.filter(r=>trendActive(r));
+    if(!isLines&&groupF){const g=(state.groups||[]).find(x=>x.id===groupF);const set=new Set(g?g.ids:[]);items=items.filter(r=>set.has(r._product?('prod_'+r.id):r.id));}
     if(q){const s=q.toLowerCase();items=items.filter(it=>((it.name||'')+' '+((it.tags||[]).join(' '))+' '+((it.hashtags||[]).join(' '))+' '+(it.brand||'')+' '+(it.season||'')+' '+(it.gender||'')+' '+(it.gcat||'')+' '+(it.shoeType||'')+' '+(it.category||'')+' '+(it.lifestyle||'')).toLowerCase().includes(s));}
     return items;
   }
@@ -1332,7 +1418,7 @@ function openArchive(store){
   }
   chips();render();
   $('#arch-q').addEventListener('input',e=>{q=e.target.value;render();});
-  chipsEl.addEventListener('click',e=>{const b=e.target.closest('[data-axis]');if(!b)return;const v=b.dataset.val,ax=b.dataset.axis;if(ax==='gender')genderF=v;else if(ax==='gcat'){gcatF=v;if(v!=='SHOES')stF='ALL';}else if(ax==='shoetype')stF=v;else if(ax==='season')seasonF=v;else if(ax==='tag')tagF=v;else if(ax==='trend')trendF=!trendF;chips();render();});
+  chipsEl.addEventListener('click',e=>{const b=e.target.closest('[data-axis]');if(!b)return;const v=b.dataset.val,ax=b.dataset.axis;if(ax==='gender')genderF=v;else if(ax==='gcat'){gcatF=v;if(v!=='SHOES')stF='ALL';}else if(ax==='shoetype')stF=v;else if(ax==='season')seasonF=v;else if(ax==='tag')tagF=v;else if(ax==='trend'){trendF=!trendF;if(trendF)groupF='';}else if(ax==='group'){groupF=(groupF===v)?'':v;if(groupF)trendF=false;}chips();render();});
   gridEl.addEventListener('click',e=>{
     const bz=e.target.closest('[data-bigzoom]');if(bz){e.stopPropagation();openLightbox(bz.dataset.bigzoom);return;}
     const c=e.target.closest('[data-aid]');if(!c)return;const id=c.dataset.aid;
@@ -1434,12 +1520,14 @@ function renderWordCloud(){
     +(sel?`<button class="btn sm" data-wctag="" style="margin-left:6px">필터 해제</button>`:'');
 }
 function setRefView(v){
-  if(v!=='matrix')v='product';
+  if(v!=='matrix'&&v!=='group')v='product';
   state.refView=v;
   $$('#ref-view-seg .segbtn').forEach(b=>b.classList.toggle('on',b.dataset.refview===v));
   $('#ref-grid-wrap').style.display=v==='product'?'block':'none';
   $('#ref-matrix-wrap').style.display=v==='matrix'?'block':'none';
+  $('#ref-group-wrap').style.display=v==='group'?'block':'none';
   if(v==='matrix')renderRefMatrix();
+  if(v==='group')renderGroups();
   if(v==='product')loadProducts();
   renderWordCloud();
 }
@@ -1698,7 +1786,7 @@ function openMeta(store,id){
 }
 
 /* ---------- upload ---------- */
-let uploadStore=null;
+let uploadStore=null, groupUploadTarget=null;
 /* 파일명 규칙: 시즌_카테고리_아이템명(.확장자) → 세 필드 자동 인식 */
 function normSeason(tok){
   const m=/^(\d{2})\s*(ss|s|fw|f|w)$/i.exec((tok||'').trim());
@@ -1838,6 +1926,16 @@ async function addCaptureFiles(files){
   libGrid('refs');refreshCounts();renderPicks();refreshJSON();
   toast(`${arr.length}장 캡처 추가 · 레퍼런스로 선택됨`);
 }
+async function addGroupFiles(files,groupId){
+  const g=state.groups.find(x=>x.id===groupId);if(!g){toast('그룹을 찾을 수 없습니다.');return;}
+  const arr=[...files].filter(f=>f.type.startsWith('image/'));if(!arr.length)return;
+  for(const f of arr){let du=await fileToDataUrl(f);du=await resizeDataUrl(du,1024);const m=parseName(f.name||'');
+    const it={id:uid(),name:(m.name&&m.name!=='image')?m.name:g.name,dataUrl:du,gender:m.gender||'',gcat:m.gcat||'SHOES',season:m.season||'',createdAt:Date.now(),tags:[],shoeType:(m.gcat==='SHOES'?(m.shoeType||''):''),lifestyle:'',trend:true,trendAt:Date.now(),hashtags:[]};
+    state.refs.push(it);await storePut('refs',it);g.ids.push(it.id);
+  }
+  saveGroups();renderGroups();refreshCounts();
+  toast(`${arr.length}장을 "${g.name}" 그룹에 추가`);
+}
 async function handleFiles(files,store){
   if(store==='__logo'){let du=await fileToDataUrl(files[0]);du=await resizeDataUrl(du,600);state.settings.logoDataUrl=du;await putOf('settings',state.settings);renderLogoPrev();toast('로고 저장됨');return;}
   if(store==='__teamNY'||store==='__teamLA'){const team=store==='__teamNY'?'NY':'LA';let du=await fileToDataUrl(files[0]);du=await resizeDataUrl(du,600);state.settings.teamLogos=state.settings.teamLogos||{NY:'',LA:''};state.settings.teamLogos[team]=du;await putOf('settings',state.settings);renderTeamPrev();toast(team+' 로고 저장됨');return;}
@@ -1943,7 +2041,7 @@ function wire(){
   gdrop.addEventListener('dragover',e=>{e.preventDefault();gdrop.classList.add('hot');});
   gdrop.addEventListener('dragleave',()=>gdrop.classList.remove('hot'));
   gdrop.addEventListener('drop',e=>{e.preventDefault();gdrop.classList.remove('hot');handleFiles(e.dataTransfer.files,'__gallery');});
-  $('#hidden-file').addEventListener('change',e=>{if(e.target.files.length){if(uploadStore==='__capture')addCaptureFiles(e.target.files);else if(uploadStore)handleFiles(e.target.files,uploadStore);}e.target.value='';});
+  $('#hidden-file').addEventListener('change',e=>{if(e.target.files.length){if(uploadStore==='__capture')addCaptureFiles(e.target.files);else if(uploadStore==='__group')addGroupFiles(e.target.files,groupUploadTarget);else if(uploadStore)handleFiles(e.target.files,uploadStore);}e.target.value='';});
   document.addEventListener('change',e=>{const s=e.target.closest('[data-pu]');if(s){const st=s.dataset.pu,k=s.dataset.puk;state.pu[st]=state.pu[st]||{gender:'',gcat:'',season:''};state.pu[st][k]=s.value;}
     if(e.target.id==='wc-season'){state.wcSeason=e.target.value;state.tagFilter='';libGrid('refs');}
     const pf=e.target.closest('#pf-season,#pf-brand,#pf-gender,#pf-fabric,#pf-shoetype');if(pf){const k=pf.id.replace('pf-','');state.prodFilter[k]=pf.value;renderProducts();}});
@@ -1968,6 +2066,13 @@ function wire(){
     const sall=e.target.closest('[data-selall]');if(sall){const st=sall.dataset.selall;if(st==='refs'){state.refs.filter(uploadMatch).forEach(it=>state.libSel.refs.add(it.id));(state.products||[]).filter(prodMatch).forEach(p=>state.libSel.refs.add('prod_'+p.id));}else{state[st].filter(it=>matchFilter(st,it)).forEach(it=>state.libSel[st].add(it.id));}libGrid(st);return;}
     const sclr=e.target.closest('[data-selclear]');if(sclr){const st=sclr.dataset.selclear;state.libSel[st].clear();libGrid(st);return;}
     const sap=e.target.closest('[data-selapply]');if(sap){await bulkApply(sap.dataset.selapply);return;}
+    const sgrp=e.target.closest('[data-selgroup]');if(sgrp){const ids=[...state.libSel.refs];if(!ids.length){toast('먼저 항목을 선택하세요.');return;}const nm=prompt('그룹 이름 (예: SNEAKERS LOAFER)\n같은 이름이면 그 그룹에 추가됩니다.');if(!nm||!nm.trim())return;assignToGroup(nm,ids);state.libSel.refs.clear();state.libSelMode.refs=false;toast(`"${nm.trim()}" 그룹에 ${ids.length}개 추가됨`);setRefView('group');return;}
+    const gmore=e.target.closest('[data-grpmorebtn]');if(gmore){const w=document.querySelector('.grpmore-wrap[data-grpmore="'+gmore.dataset.grpmorebtn+'"]');if(w){w.style.display='';gmore.style.display='none';}return;}
+    const gadd=e.target.closest('[data-grpadd]');if(gadd){groupUploadTarget=gadd.dataset.grpadd;uploadStore='__group';$('#hidden-file').click();return;}
+    const gren=e.target.closest('[data-grprename]');if(gren){const g=state.groups.find(x=>x.id===gren.dataset.grprename);if(!g)return;const nm=prompt('그룹 이름 변경',g.name);if(nm&&nm.trim()){g.name=nm.trim();saveGroups();renderGroups();}return;}
+    const grem=e.target.closest('[data-grpremove]');if(grem){const g=state.groups.find(x=>x.id===grem.dataset.grpremove);if(!g)return;if(!confirm(`"${g.name}" 그룹을 삭제할까요? (사진 자체는 지워지지 않아요)`))return;state.groups=state.groups.filter(x=>x.id!==g.id);saveGroups();renderGroups();return;}
+    const gdel=e.target.closest('[data-grpdel]');if(gdel){const g=state.groups.find(x=>x.id===gdel.dataset.grpdel);if(!g)return;g.ids=g.ids.filter(id=>id!==gdel.dataset.gitem);saveGroups();renderGroups();return;}
+    const gnew=e.target.closest('#grp-new-upload');if(gnew){const nm=prompt('새 그룹 이름 (예: SNEAKERS LOAFER)');if(!nm||!nm.trim())return;const g={id:uid(),name:nm.trim(),ids:[],createdAt:Date.now()};state.groups.push(g);saveGroups();groupUploadTarget=g.id;uploadStore='__group';$('#hidden-file').click();return;}
     const gcard=e.target.closest('#grid-gallery .card');if(gcard&&!e.target.closest('.x')){openEdit(gcard.dataset.gid);return;}
     const filt=e.target.closest('[data-filter]');if(filt){state.galFilter=filt.dataset.filter;galleryGrid();return;}
     const lf=e.target.closest('[data-life]');if(lf){state.galLife=lf.dataset.life;galleryGrid();return;}
@@ -2007,6 +2112,7 @@ function wire(){
   $('#lightbox').addEventListener('click',()=>$('#lightbox').classList.remove('on'));
   $('#btn-savesettings').addEventListener('click',saveSettings);
   $('#btn-cloudtest').addEventListener('click',cloudTest);
+  const lo=$('#btn-logout');if(lo)lo.addEventListener('click',()=>{if(!confirm('로그아웃할까요? 이 기기의 로그인 정보가 지워집니다.'))return;try{localStorage.removeItem('mlb_session');sessionStorage.removeItem('mlb_session');localStorage.removeItem('mlb_auth_email');sessionStorage.removeItem('mlb_auth');}catch(e){}location.reload();});
   $('#btn-cloudmigrate').addEventListener('click',migrateToCloud);
   $('#btn-sales-apply').addEventListener('click',applySales);
   $('#btn-sales-clear').addEventListener('click',clearSales);
@@ -2038,10 +2144,64 @@ async function boot(){
     if(!loaded){try{const d=JSON.parse(localStorage.getItem('mlb_sales')||'null');if(d){state.salesRows=d.rows||[];state.salesRaw=d.raw||'';loaded=true;}}catch(e){}}
     if(!loaded){try{const v=await allOf('sales');const main=(v||[]).find(x=>x.id==='main')||(v||[])[0];if(main){state.salesRows=main.rows||[];state.salesRaw=main.raw||'';}}catch(e){}}
   }catch(e){}
+  try{
+    let gl=false;
+    if(cloudOn()){try{const gr=await supaSelect('groups');const main=gr.find(x=>x.id==='main')||gr[0];if(main&&Array.isArray(main.groups)){state.groups=main.groups;gl=true;}}catch(e){}}
+    if(!gl)loadGroupsLocal();
+  }catch(e){}
   fillSeasonSelects();wire();applyCategory(true);renderAll();loadSettingsUI();updateKeyDot();refreshJSON(true);
   if(cloudOn())loadProducts();
 }
-boot();
+/* ---------- Supabase Auth 로그인 (이메일+비밀번호) ---------- */
+/* 계정은 Supabase → Authentication → Users → Add user 로 관리자가 발급. RLS 미적용(데이터 접근은 기존과 동일), 로그인 화면만 게이트 역할. */
+let _booted=false, authToken='';
+function authCfg(){return{url:(SUPABASE_URL||'').replace(/\/$/,''),key:SUPABASE_ANON_KEY||''};}
+async function authSignIn(email,password){
+  const c=authCfg();if(!c.url||!c.key)throw new Error('로그인 서버 설정이 없습니다(관리자 문의).');
+  const r=await fetch(`${c.url}/auth/v1/token?grant_type=password`,{method:'POST',headers:{apikey:c.key,'Content-Type':'application/json'},body:JSON.stringify({email:(email||'').trim(),password:password||''})});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error_description||j.msg||j.error||'이메일 또는 비밀번호가 올바르지 않습니다.');
+  return j; // {access_token, refresh_token, expires_at, user, ...}
+}
+function enterApp(session){
+  authToken=(session&&session.access_token)||'';
+  const g=$('#login-gate');if(g)g.classList.add('hidden');
+  if(!_booted){_booted=true;boot();}
+}
+async function tryRestore(){
+  let saved='';try{saved=localStorage.getItem('mlb_session')||sessionStorage.getItem('mlb_session')||'';}catch(e){}
+  if(!saved)return false;
+  let s;try{s=JSON.parse(saved);}catch(e){return false;}
+  if(!s||!s.refresh_token)return false;
+  try{
+    const c=authCfg();
+    const r=await fetch(`${c.url}/auth/v1/token?grant_type=refresh_token`,{method:'POST',headers:{apikey:c.key,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token})});
+    if(!r.ok)return false;const j=await r.json();
+    // 갱신된 세션 저장
+    const persist=localStorage.getItem('mlb_session')?localStorage:sessionStorage;
+    try{persist.setItem('mlb_session',JSON.stringify({refresh_token:j.refresh_token,email:s.email}));}catch(e){}
+    enterApp(j);return true;
+  }catch(e){return false;}
+}
+function initGate(){
+  const go=async()=>{
+    const email=$('#login-email').value,pw=$('#login-pw').value,err=$('#login-err'),btn=$('#login-go');
+    if(!email||!pw){err.textContent='이메일과 비밀번호를 입력하세요.';return;}
+    err.textContent='로그인 중…';btn.disabled=true;
+    try{
+      const s=await authSignIn(email,pw);
+      const store=$('#login-remember').checked?localStorage:sessionStorage;
+      try{store.setItem('mlb_session',JSON.stringify({refresh_token:s.refresh_token,email:(email||'').trim().toLowerCase()}));}catch(e){}
+      // 반대편 저장소는 정리
+      try{($('#login-remember').checked?sessionStorage:localStorage).removeItem('mlb_session');}catch(e){}
+      err.textContent='';enterApp(s);
+    }catch(e){err.textContent=e.message;btn.disabled=false;}
+  };
+  const btn=$('#login-go');if(btn)btn.addEventListener('click',go);
+  ['#login-email','#login-pw'].forEach(sel=>{const el=$(sel);if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter')go();});});
+  tryRestore().then(ok=>{if(!ok){const inp=$('#login-email');if(inp)inp.focus();}});
+}
+initGate();
 </script>
 </body>
 </html>
