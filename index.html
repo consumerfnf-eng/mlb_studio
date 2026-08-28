@@ -334,6 +334,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
         <div class="drop" data-store="refs"><b>레퍼런스 이미지 올리기</b><br><span style="font-size:12px">채용할 디자인(카라·퀼팅·실루엣·핏) 레퍼런스 · 파일명 <b>성별_카테고리_시즌_이름</b> 이면 자동 분류</span></div>
         <label class="row" style="font-size:12px;color:var(--ink-70);gap:6px;margin-top:10px"><input type="checkbox" id="ref-trend-up"> <b style="color:#c0392b">트렌드 아이템으로 추가</b> — 켜고 올리면 빨간 테두리로 표시(해시태그는 카드 클릭해서 입력)</label>
         <div class="bulkbar" data-store="refs"></div>
+        <div class="arch-chips" id="ref-cat-chips" style="margin:10px 0 8px"></div>
         <div id="ref-wordcloud" class="wordcloud" style="display:none"></div>
         <div class="row" style="justify-content:space-between;align-items:center;margin:12px 0 0">
           <div class="seg" id="ref-view-seg">
@@ -768,7 +769,7 @@ const state={
   libFilter:{lines:{gender:'ALL',gcat:'ALL',season:'ALL',shoetype:'ALL'},refs:{gender:'ALL',gcat:'ALL',season:'ALL'}},
   pu:{lines:{gender:'',gcat:'',season:''},refs:{gender:'',gcat:'',season:''},models:{gender:'',gcat:'',season:''},fabrics:{gender:'',gcat:'',season:''}},
   libSelMode:{lines:false,refs:false}, libSel:{lines:new Set(),refs:new Set()}, refView:'product', mxSel:null, tagFilter:'', refTrendUpload:false, wcSeason:'', groups:[], groupFilter:'', prodShowAll:false,
-  products:[], prodLoaded:false, prodFilter:{season:'',brand:'',gender:'',fabric:'',search:''},
+  products:[], prodLoaded:false, prodFilter:{season:'',brand:'',gender:'',fabric:'',search:'',cat:''},
   salesRows:[], salesRaw:''
 };
 
@@ -1206,7 +1207,8 @@ function refById(id){ // id: ref id 또는 'prod_<num>'
 }
 function groupByName(name){return state.groups.find(g=>g.name.toLowerCase()===name.trim().toLowerCase());}
 function pickGroupName(cb){
-  const names=state.groups.slice().sort((a,b)=>b.createdAt-a.createdAt);
+  const cat=state.prodFilter.cat;
+  const names=state.groups.filter(g=>!cat||groupCat(g)===cat).slice().sort((a,b)=>b.createdAt-a.createdAt);
   const list=names.map(g=>`<button class="btn sm gp-pick" data-gpname="${esc(g.name)}" style="justify-content:flex-start;border-color:#c0392b;color:#c0392b">🔥 ${esc(g.name)} <span style="opacity:.6;margin-left:4px">(${g.ids.length})</span></button>`).join('');
   const html=`<div class="gp-modal-body">
     ${names.length?`<div class="fld">기존 그룹에 추가</div><div class="gp-list">${list}</div><div class="gp-or">또는 새 그룹</div>`:'<div class="fld">새 그룹 이름</div>'}
@@ -1222,18 +1224,21 @@ function pickGroupName(cb){
   $('#gp-cancel').onclick=close;
   const inp=$('#gp-new');if(inp)inp.addEventListener('keydown',e=>{if(e.key==='Enter'){const n=inp.value.trim();if(n){close();cb(n);}}});
 }
+function groupCat(g){return (g&&g.cat)||'SHOES';} // 기존 cat 없는 그룹은 SHOES로 취급
 function assignToGroup(name,ids){
   name=(name||'').trim();if(!name||!ids.length)return;
   let g=groupByName(name);
-  if(!g){g={id:uid(),name,ids:[],createdAt:Date.now()};state.groups.push(g);}
+  if(!g){g={id:uid(),name,ids:[],cat:(state.prodFilter.cat||'SHOES'),createdAt:Date.now()};state.groups.push(g);}
   ids.forEach(id=>{if(!g.ids.includes(id))g.ids.push(id);});
   saveGroups();
 }
 function itemGroups(it){const id=it.id;return state.groups.filter(g=>g.ids.includes(id)).map(g=>g.name);}
 function renderGroups(){
   const box=$('#group-list');if(!box)return;
-  if(!state.groups.length){box.innerHTML=`<div class="empty">아직 그룹이 없습니다. PRODUCT 탭에서 선택모드로 여러 개 고른 뒤 "그룹으로 묶기"를 누르세요.</div>`;return;}
-  box.innerHTML=state.groups.slice().sort((a,b)=>b.createdAt-a.createdAt).map(g=>{
+  const cat=state.prodFilter.cat;
+  const groups=state.groups.filter(g=>!cat||groupCat(g)===cat); // 선택 카테고리 그룹만
+  if(!groups.length){box.innerHTML=`<div class="empty">${cat?cat+' ':''}그룹이 아직 없습니다. PRODUCT 탭에서 선택모드로 여러 개 고른 뒤 "그룹으로 묶기"를 누르세요.</div>`;return;}
+  box.innerHTML=groups.slice().sort((a,b)=>b.createdAt-a.createdAt).map(g=>{
     const items=g.ids.map(refById).filter(Boolean);
     const cardHTML=(it,hidden)=>`<div class="card ro grpcard${hidden?' grphidden':''}" data-ro="1"><button class="x" data-grpdel="${g.id}" data-gitem="${it.id}" title="그룹에서 빼기">✕</button><img class="pthumb" loading="lazy" src="${esc(it.dataUrl||'')}" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name||'')}</div></div></div>`;
     const cards=items.map((it,i)=>cardHTML(it,i>=7)).join('');
@@ -1298,6 +1303,7 @@ function buildProdFilters(){
 }
 function prodMatch(p){
   const f=state.prodFilter;
+  if(f.cat&&f.cat!=='SHOES')return false; // 상품 카탈로그는 슈즈이므로 다른 카테고리 선택 시 숨김
   if(f.unclass&&p.shoe_type&&p.lifestyle)return false;
   if(f.season&&p.season!==f.season)return false;
   if(f.brand&&p.brand!==f.brand)return false;
@@ -1310,6 +1316,7 @@ function prodMatch(p){
 function uploadMatch(r){
   const f=state.prodFilter;
   if(f.brand||f.fabric)return false; // 상품 전용 필터가 걸리면 내 레퍼런스는 숨김
+  if(f.cat&&(r.gcat||'')!==f.cat)return false; // 카테고리 필터
   if(f.unclass&&r.shoeType&&r.lifestyle)return false;
   if(f.season&&r.season!==f.season)return false;
   if(f.gender&&r.gender!==f.gender)return false;
@@ -1317,9 +1324,16 @@ function uploadMatch(r){
   if(f.search){const q=f.search.toLowerCase();if(!((r.name||'').toLowerCase().includes(q)||(r.hashtags||[]).join(' ').toLowerCase().includes(q)))return false;}
   return true;
 }
+function renderRefCatChips(){
+  const el=$('#ref-cat-chips');if(!el)return;
+  const cur=state.prodFilter.cat||'';
+  const chip=(v,label)=>`<button class="chip ${cur===v?'on':''}" data-refcat="${v}" style="${cur===v?'background:var(--pine);color:#fff;border-color:var(--pine)':''}">${label}</button>`;
+  el.innerHTML=`<span class="chiplabel" style="margin-right:4px">카테고리</span>`+chip('','전체')+GCAT_OPTS.map(c=>chip(c,c)).join('');
+}
 function renderProducts(){
   const grid=$('#grid-refs');if(!grid)return;
   if(state.products&&state.products.length)buildProdFilters();
+  renderRefCatChips();
   const pin=state.tagFilter; // 태그 클릭 시 해당 태그 아이템을 상단 고정(나머지는 아래 그대로)
   const hasTag=(arr,t)=>t&&(arr||[]).some(x=>(x||'').toLowerCase()===t);
   const uploads=state.refs.filter(uploadMatch).sort((a,b)=>{
@@ -1532,7 +1546,7 @@ async function classifyRefsTags(items){
 }
 const LIFE_SHORT={'wellness':'WELLNESS','sportive&old money':'SPORTIVE×OLD MONEY','street':'STREET','daily':'DAILY','outdoor':'OUTDOOR','street&sportive':'STREET'};
 function normTags(str){return (str||'').split(/[,\n]/).map(s=>s.replace(/^#/,'').trim()).filter(Boolean);}
-function tagCounts(){const m=new Map();allRefs().forEach(r=>{if(state.wcSeason&&r.season!==state.wcSeason)return;(r.hashtags||[]).forEach(t=>{const k=t.toLowerCase();m.set(k,(m.get(k)||0)+1);});});return m;}
+function tagCounts(){const m=new Map();const cat=state.prodFilter.cat;allRefs().forEach(r=>{if(state.wcSeason&&r.season!==state.wcSeason)return;if(cat){const g=r._product?'SHOES':(r.gcat||'');if(g!==cat)return;}(r.hashtags||[]).forEach(t=>{const k=t.toLowerCase();m.set(k,(m.get(k)||0)+1);});});return m;}
 function refScore(r,counts){const hs=r.hashtags||[];if(!hs.length)return 0;return Math.max(...hs.map(t=>counts.get(t.toLowerCase())||0));}
 function renderWordCloud(){
   const box=$('#ref-wordcloud');if(!box)return;
@@ -1551,6 +1565,7 @@ function renderWordCloud(){
 function setRefView(v){
   if(v!=='matrix'&&v!=='group')v='product';
   state.refView=v;
+  renderRefCatChips();
   $$('#ref-view-seg .segbtn').forEach(b=>b.classList.toggle('on',b.dataset.refview===v));
   $('#ref-grid-wrap').style.display=v==='product'?'block':'none';
   $('#ref-matrix-wrap').style.display=v==='matrix'?'block':'none';
@@ -1987,7 +2002,8 @@ async function addGroupFiles(files,groupId){
   const g=state.groups.find(x=>x.id===groupId);if(!g){toast('그룹을 찾을 수 없습니다.');return;}
   const arr=[...files].filter(f=>f.type.startsWith('image/'));if(!arr.length)return;
   for(const f of arr){let du=await fileToDataUrl(f);du=await resizeDataUrl(du,1024);const m=parseName(f.name||'');
-    const it={id:uid(),name:(m.name&&m.name!=='image')?m.name:g.name,dataUrl:du,gender:m.gender||'',gcat:m.gcat||'SHOES',season:m.season||'',createdAt:Date.now(),tags:[],shoeType:(m.gcat==='SHOES'?(m.shoeType||''):''),lifestyle:'',trend:true,trendAt:Date.now(),hashtags:[]};
+    const gc=groupCat(g);
+    const it={id:uid(),name:(m.name&&m.name!=='image')?m.name:g.name,dataUrl:du,gender:m.gender||'',gcat:m.gcat||gc,season:m.season||'',createdAt:Date.now(),tags:[],shoeType:(gc==='SHOES'?(m.shoeType||''):''),lifestyle:'',trend:true,trendAt:Date.now(),hashtags:[]};
     state.refs.push(it);await storePut('refs',it);g.ids.push(it.id);
   }
   saveGroups();renderGroups();refreshCounts();
@@ -2006,7 +2022,12 @@ async function handleFiles(files,store){
     toast(`${arr.length}장 갤러리에 추가${parsed?` · ${parsed}장 파일명 자동인식`:''}`);return;
   }
   const arr=[...files].filter(f=>f.type.startsWith('image/'));let parsed=0;
-  const _pu=state.pu[store]||{};const pg=(($('#pu-'+store+'-gender')||{}).value)||_pu.gender||'',pc=(($('#pu-'+store+'-gcat')||{}).value)||_pu.gcat||'',ps=(($('#pu-'+store+'-season')||{}).value)||_pu.season||'';
+  const _pu=state.pu[store]||{};let pg=(($('#pu-'+store+'-gender')||{}).value)||_pu.gender||'',pc=(($('#pu-'+store+'-gcat')||{}).value)||_pu.gcat||'',ps=(($('#pu-'+store+'-season')||{}).value)||_pu.season||'';
+  if(store==='refs'){ // 지정칸이 비었으면 현재 활성 카테고리 칩·시즌 필터를 자동 적용
+    if(!pc&&state.prodFilter.cat)pc=state.prodFilter.cat;
+    if(!ps&&state.prodFilter.season)ps=state.prodFilter.season;
+    if(!pg&&state.prodFilter.gender)pg=state.prodFilter.gender;
+  }
   for(const f of arr){let du=await fileToDataUrl(f);du=await resizeDataUrl(du,1024);
     const m=parseName(f.name);if(m.ok)parsed++;
     const it={id:uid(),name:m.name,dataUrl:du,gender:pg||m.gender||'',gcat:pc||m.gcat||'',season:ps||m.season||'',createdAt:Date.now()};
@@ -2123,13 +2144,14 @@ function wire(){
     const sall=e.target.closest('[data-selall]');if(sall){const st=sall.dataset.selall;if(st==='refs'){state.refs.filter(uploadMatch).forEach(it=>state.libSel.refs.add(it.id));(state.products||[]).filter(prodMatch).forEach(p=>state.libSel.refs.add('prod_'+p.id));}else{state[st].filter(it=>matchFilter(st,it)).forEach(it=>state.libSel[st].add(it.id));}libGrid(st);return;}
     const sclr=e.target.closest('[data-selclear]');if(sclr){const st=sclr.dataset.selclear;state.libSel[st].clear();libGrid(st);return;}
     const sap=e.target.closest('[data-selapply]');if(sap){await bulkApply(sap.dataset.selapply);return;}
+    const rcat=e.target.closest('[data-refcat]');if(rcat){state.prodFilter.cat=rcat.dataset.refcat;state.prodShowAll=false;renderRefCatChips();renderWordCloud();if(state.refView==='group')renderGroups();else if(state.refView==='matrix')renderRefMatrix();else renderProducts();return;}
     const sgrp=e.target.closest('[data-selgroup]');if(sgrp){const ids=[...state.libSel.refs];if(!ids.length){toast('먼저 항목을 선택하세요.');return;}pickGroupName(nm=>{assignToGroup(nm,ids);state.libSel.refs.clear();state.libSelMode.refs=false;toast(`"${nm}" 그룹에 ${ids.length}개 추가됨`);setRefView('group');});return;}
     const gmore=e.target.closest('[data-grpmorebtn]');if(gmore){const sec=document.querySelector('.grpsec[data-grpsec="'+gmore.dataset.grpmorebtn+'"]');if(sec){sec.querySelectorAll('.grphidden').forEach(el=>el.classList.remove('grphidden'));gmore.style.display='none';}return;}
     const gadd=e.target.closest('[data-grpadd]');if(gadd){groupUploadTarget=gadd.dataset.grpadd;uploadStore='__group';$('#hidden-file').click();return;}
     const gren=e.target.closest('[data-grprename]');if(gren){const g=state.groups.find(x=>x.id===gren.dataset.grprename);if(!g)return;const nm=prompt('그룹 이름 변경',g.name);if(nm&&nm.trim()){g.name=nm.trim();saveGroups();renderGroups();}return;}
     const grem=e.target.closest('[data-grpremove]');if(grem){const g=state.groups.find(x=>x.id===grem.dataset.grpremove);if(!g)return;if(!confirm(`"${g.name}" 그룹을 삭제할까요? (사진 자체는 지워지지 않아요)`))return;state.groups=state.groups.filter(x=>x.id!==g.id);saveGroups();renderGroups();return;}
     const gdel=e.target.closest('[data-grpdel]');if(gdel){const g=state.groups.find(x=>x.id===gdel.dataset.grpdel);if(!g)return;g.ids=g.ids.filter(id=>id!==gdel.dataset.gitem);saveGroups();renderGroups();return;}
-    const gnew=e.target.closest('#grp-new-upload');if(gnew){const nm=prompt('새 그룹 이름 (예: SNEAKERS LOAFER)');if(!nm||!nm.trim())return;const g={id:uid(),name:nm.trim(),ids:[],createdAt:Date.now()};state.groups.push(g);saveGroups();groupUploadTarget=g.id;uploadStore='__group';$('#hidden-file').click();return;}
+    const gnew=e.target.closest('#grp-new-upload');if(gnew){const nm=prompt('새 그룹 이름 (예: SNEAKERS LOAFER)');if(!nm||!nm.trim())return;const g={id:uid(),name:nm.trim(),ids:[],cat:(state.prodFilter.cat||'SHOES'),createdAt:Date.now()};state.groups.push(g);saveGroups();groupUploadTarget=g.id;uploadStore='__group';$('#hidden-file').click();return;}
     const gcard=e.target.closest('#grid-gallery .card');if(gcard&&!e.target.closest('.x')){openEdit(gcard.dataset.gid);return;}
     const filt=e.target.closest('[data-filter]');if(filt){state.galFilter=filt.dataset.filter;galleryGrid();return;}
     const lf=e.target.closest('[data-life]');if(lf){state.galLife=lf.dataset.life;galleryGrid();return;}
