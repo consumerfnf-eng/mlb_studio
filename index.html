@@ -418,7 +418,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
         </div>
       </div>
       <div>
-        <div class="panel" style="position:sticky;top:82px">
+        <div class="panel">
           <div class="sectlabel">유지 · 교체 · 채용 <span class="hint" id="cat-tag" style="margin:0"></span></div>
           <div class="grouplabel" style="color:var(--pine);font-weight:600;margin-top:0">PRESERVE — 베이스에서 유지</div>
           <div class="pillrow" id="keep-pills"></div>
@@ -448,14 +448,15 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
             <label class="row" style="font-size:12px;color:var(--ink-70);gap:6px;margin:2px 0 8px"><input type="checkbox" id="ol-enable" checked> 생성 시 로고 적용 (선택값만 반영)</label>
             <label class="fld">프리셋</label>
             <select id="ol-preset" class="inp sm" style="margin-bottom:8px">
-              <option value="NY_SMALL">① NY 작은 로고 (좌측 가슴·톤온톤 자수)</option>
-              <option value="DODGERS_SCRIPT">② Dodgers 자수 (앞판 전체 필기체)</option>
-              <option value="NY_BIG">③ NY 빅로고 (가슴 중앙 크게·톤온톤)</option>
+              <option value="NY_SMALL">① 기본 — NY 작은 로고 (좌측 가슴·톤온톤)</option>
+              <option value="MONOGRAM_ALLOVER">② 모노그램 올오버 (전판 톤온톤 반복)</option>
+              <option value="DODGERS_SCRIPT">③ Dodgers 자수 (앞판 전체 필기체)</option>
+              <option value="NY_BIG">④ NY 빅로고 (가슴 중앙 크게·톤온톤)</option>
               <option value="CUSTOM">직접 설정</option>
             </select>
             <div class="row" style="gap:8px;flex-wrap:wrap">
               <div style="flex:1;min-width:130px"><label class="fld">로고 타입</label><select id="ol-type" class="inp sm"><option value="NY_MONOGRAM">NY 모노그램</option><option value="DODGERS_SCRIPT">Dodgers 필기체</option></select></div>
-              <div style="flex:1;min-width:130px"><label class="fld">크기</label><select id="ol-size" class="inp sm"><option value="SMALL">SMALL (가슴·소매 작게)</option><option value="BIG">BIG (가슴 중앙 크게)</option><option value="FULL_FRONT">FULL_FRONT (앞판 전체)</option></select></div>
+              <div style="flex:1;min-width:130px"><label class="fld">크기</label><select id="ol-size" class="inp sm"><option value="SMALL">SMALL (가슴·소매 작게)</option><option value="BIG">BIG (가슴 중앙 크게)</option><option value="FULL_FRONT">FULL_FRONT (앞판 전체)</option><option value="ALLOVER">ALLOVER (전판 톤온톤 반복)</option></select></div>
             </div>
             <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
               <div style="flex:1;min-width:130px"><label class="fld">소재</label><select id="ol-material" class="inp sm"><option value="EMBROIDERY">자수</option><option value="PRINT">프린트</option><option value="RUBBER">러버</option></select></div>
@@ -969,6 +970,7 @@ function jsonToPrompt(J,plan){
     adoptClauses(J,noun).forEach(c=>S.push(c));
   }
   S.push(`${(cat.parent||'GARMENT')} — ${garmentParts(cat,g).join('; ')}.`);
+  if((cat.parent||'')!=='SHOES'&&mode!=='preserve')S.push(`SCENE — plain seamless WHITE studio background with clean, even studio lighting (default), unless a specific background is requested.`);
   const m=g.material||{},md=[];
   if(m.fabric_type)md.push(`${m.fabric_type} shell`);
   if(m.surface)md.push(m.surface);
@@ -997,6 +999,7 @@ function updatePromptPrev(){const plan=computePlan();$('#promptprev').textConten
 function applyLogoPreset(p){
   const P={
     NY_SMALL:{type:'NY_MONOGRAM',size:'SMALL',material:'EMBROIDERY',color:'TONAL',place:'LEFT_CHEST'},
+    MONOGRAM_ALLOVER:{type:'NY_MONOGRAM',size:'ALLOVER',material:'PRINT',color:'TONAL',place:'CENTER_CHEST'},
     DODGERS_SCRIPT:{type:'DODGERS_SCRIPT',size:'FULL_FRONT',material:'EMBROIDERY',color:'WHITE',place:'CENTER_CHEST'},
     NY_BIG:{type:'NY_MONOGRAM',size:'BIG',material:'PRINT',color:'TONAL',place:'CENTER_CHEST'}
   }[p];
@@ -1006,7 +1009,7 @@ function applyLogoPreset(p){
 }
 function outerLogoClause(ol,hasPng){
   const typeTxt=ol.type==='DODGERS_SCRIPT'?'the LA Dodgers cursive script logo (exact spelling and letterforms)':'the NY interlocking monogram logo';
-  const sizeMap={SMALL:'SMALL — a small logo on the chest or sleeve, about 5–8% of the front-panel width',BIG:'BIG — a large logo centered on the chest, about 25–38% of the front-panel width',FULL_FRONT:'FULL_FRONT — a Dodgers cursive logo spanning wide across the front panel, about 45–65% of the front-panel width'};
+  const sizeMap={SMALL:'SMALL — a small logo on the chest or sleeve, about 5–8% of the front-panel width',BIG:'BIG — a large logo centered on the chest, about 25–38% of the front-panel width',FULL_FRONT:'FULL_FRONT — a Dodgers cursive logo spanning wide across the front panel, about 45–65% of the front-panel width',ALLOVER:'ALL-OVER — the monogram repeated as an evenly tiled tone-on-tone pattern covering the entire front of the outerwear (not a single logo), subtle and integrated into the fabric'};
   const matMap={EMBROIDERY:'dense premium 3D embroidery with clean stitched edges and fine thread texture',PRINT:'a flat, crisp apparel print (not embroidery, not a patch)',RUBBER:'a matte soft-rubber/silicone logo with clean molded edges and subtle relief'};
   const colorMap={TONAL:'tonal — same color family as the outer shell, only a subtle 5–12% lighter/darker tone-on-tone contrast',SKY_BLUE:'a single SKY BLUE color',WHITE:'a single WHITE color',GREY:'a single GREY color',NAVY:'a single NAVY color',BLACK:'a single BLACK color'};
   const placeMap={LEFT_CHEST:"the wearer's left chest",RIGHT_CHEST:"the wearer's right chest",CENTER_CHEST:'the center chest',CENTER_BACK:'the center back',LEFT_SLEEVE:"the wearer's left sleeve"};
@@ -1015,8 +1018,10 @@ function outerLogoClause(ol,hasPng){
    +`LOGO SIZE: ${sizeMap[ol.size]||sizeMap.SMALL}. `
    +`LOGO MATERIAL: ${matMap[ol.material]||matMap.EMBROIDERY}. `
    +`LOGO COLOR: ${colorMap[ol.color]||colorMap.TONAL}; no arbitrary colors, gradients, outlines or multicolor. `
-   +`LOGO PLACEMENT: place the logo ONLY on ${placeMap[ol.place]||placeMap.LEFT_CHEST}; do not let it awkwardly cross zippers, pocket openings, seams or panel lines. `
-   +`Apply exactly ONE logo. PRESERVE everything else — silhouette, material, color, quilting, seams, pockets, zippers, hood and details unchanged; make the logo follow the fabric's curvature, folds, perspective and lighting naturally.`;
+   +(ol.size==='ALLOVER'
+      ? `PLACEMENT: tile the monogram evenly across the whole front; keep it tone-on-tone and let it follow the fabric's curvature, folds, perspective and lighting. `
+      : `LOGO PLACEMENT: place the logo ONLY on ${placeMap[ol.place]||placeMap.LEFT_CHEST}; do not let it awkwardly cross zippers, pocket openings, seams or panel lines. Apply exactly ONE logo. `)
+   +`PRESERVE everything else — silhouette, material, color, quilting, seams, pockets, zippers, hood and details unchanged.`;
 }
 async function openaiEdit(prompt,imgs,n){
   const st=state.settings;if(!st.apiKey)throw new Error('설정에서 API 키를 먼저 입력하세요.');
