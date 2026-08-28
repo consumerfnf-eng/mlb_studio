@@ -443,8 +443,28 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
             </div>
           </div>
 
-          <div class="slider-wrap">
-            <div class="slider-head"><span class="lab">디자인 반영 밸런스</span><span class="val" id="balance-v">35</span></div>
+          <div id="outer-logo" style="display:none">
+            <div class="sectlabel" style="margin-top:14px">MLB 로고 (아우터)</div>
+            <label class="row" style="font-size:12px;color:var(--ink-70);gap:6px;margin:2px 0 8px"><input type="checkbox" id="ol-enable" checked> 생성 시 로고 적용 (선택값만 반영)</label>
+            <label class="fld">프리셋</label>
+            <select id="ol-preset" class="inp sm" style="margin-bottom:8px">
+              <option value="NY_SMALL">① NY 작은 로고 (좌측 가슴·톤온톤 자수)</option>
+              <option value="DODGERS_SCRIPT">② Dodgers 자수 (앞판 전체 필기체)</option>
+              <option value="NY_BIG">③ NY 빅로고 (가슴 중앙 크게·톤온톤)</option>
+              <option value="CUSTOM">직접 설정</option>
+            </select>
+            <div class="row" style="gap:8px;flex-wrap:wrap">
+              <div style="flex:1;min-width:130px"><label class="fld">로고 타입</label><select id="ol-type" class="inp sm"><option value="NY_MONOGRAM">NY 모노그램</option><option value="DODGERS_SCRIPT">Dodgers 필기체</option></select></div>
+              <div style="flex:1;min-width:130px"><label class="fld">크기</label><select id="ol-size" class="inp sm"><option value="SMALL">SMALL (가슴·소매 작게)</option><option value="BIG">BIG (가슴 중앙 크게)</option><option value="FULL_FRONT">FULL_FRONT (앞판 전체)</option></select></div>
+            </div>
+            <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
+              <div style="flex:1;min-width:130px"><label class="fld">소재</label><select id="ol-material" class="inp sm"><option value="EMBROIDERY">자수</option><option value="PRINT">프린트</option><option value="RUBBER">러버</option></select></div>
+              <div style="flex:1;min-width:130px"><label class="fld">컬러</label><select id="ol-color" class="inp sm"><option value="TONAL">톤온톤</option><option value="SKY_BLUE">SKY BLUE</option><option value="WHITE">WHITE</option><option value="GREY">GREY</option><option value="NAVY">NAVY</option><option value="BLACK">BLACK</option></select></div>
+              <div style="flex:1;min-width:130px"><label class="fld">위치</label><select id="ol-place" class="inp sm"><option value="LEFT_CHEST">좌측 가슴</option><option value="RIGHT_CHEST">우측 가슴</option><option value="CENTER_CHEST">가슴 중앙</option><option value="CENTER_BACK">등판 중앙</option><option value="LEFT_SLEEVE">좌측 소매</option></select></div>
+            </div>
+            <div class="hint" style="margin-top:6px">설정에서 NY·LA(Dodgers) 로고 PNG를 등록하면 그 형태를 그대로 반영합니다. 없으면 텍스트 기반으로 그립니다.</div>
+          </div>
+
             <input type="range" id="balance" min="0" max="100" value="35">
             <div class="row" style="justify-content:space-between;margin-top:3px"><span class="slider-hint" style="margin:0">◀ MLB 라인</span><span class="slider-hint" id="balance-h" style="margin:0;color:var(--pine);font-weight:600"></span><span class="slider-hint" style="margin:0">레퍼런스 ▶</span></div>
           </div>
@@ -850,16 +870,20 @@ function computePlan(){
     pushList(refs);pushShell();
   }else if(modelMode==='image'){
     images.push(model.dataUrl);roles.push('THE MODEL to keep and dress — the output MUST show this exact person (face, hair, skin tone, body), wearing the new garment');
-    if(line){images.push(line.dataUrl);roles.push(`MLB base form — source of the ${noun} design, outfit styling, pose and background (its person is NOT used)`);}
-    pushList(refs);pushShell();
+    if(line){images.push(line.dataUrl);roles.push(`MLB base form — source of the ${noun} design, outfit styling, pose and background (its person is NOT used)`);pushList(refs);}
+    else if(designRefs.length){const primary=designRefs[0];images.push(primary.dataUrl);roles.push(`PRIMARY ${noun} reference — build the ${noun} ON this shape, silhouette, proportions and colorway (base form), then put it on the model`);pushList(refs.filter(r=>r!==primary));}
+    else pushList(refs);
+    pushShell();
   }else if(modelMode==='preserve'){
-    if(line){images.push(line.dataUrl);roles.push(`base lookbook — preserve its model, face, hair, pose, background and everything except the ${noun}`);}
-    pushList(refs);pushShell();
+    if(line){images.push(line.dataUrl);roles.push(`base lookbook — preserve its model, face, hair, pose, background and everything except the ${noun}`);pushList(refs);}
+    else if(designRefs.length){const primary=designRefs[0];images.push(primary.dataUrl);roles.push(`PRIMARY ${noun} reference — build the ${noun} ON this shape, silhouette, proportions and colorway (base form)`);pushList(refs.filter(r=>r!==primary));}
+    else pushList(refs);
+    pushShell();
   }else{ // idol
     refLed=bal>=60&&designRefs.length>0;
-    if(refLed){
+    if(refLed||(!line&&designRefs.length)){
       const primary=designRefs[0];
-      images.push(primary.dataUrl);roles.push(`PRIMARY ${noun} reference — build the garment ON this shape, silhouette and neckline`);
+      images.push(primary.dataUrl);roles.push(line?`PRIMARY ${noun} reference — build the garment ON this shape, silhouette and neckline`:`PRIMARY ${noun} reference — build the ${noun} ON this shape, silhouette, proportions and colorway (this is the base form)`);
       if(line){images.push(line.dataUrl);roles.push('MLB base form — brand identity, quilting quality and premium finishing reference only (do NOT copy its silhouette)');}
       pushList(refs.filter(r=>r!==primary));pushShell();
     }else{
@@ -970,6 +994,30 @@ function rolesToText(roles){return roles.map((r,i)=>`image ${i+1}: ${r}`).join('
 function updatePromptPrev(){const plan=computePlan();$('#promptprev').textContent=jsonToPrompt(currentJSON(),plan);$('#btn-gen').disabled=!(state.pick.line||state.pick.refs.size);}
 
 /* ---------- OpenAI ---------- */
+function applyLogoPreset(p){
+  const P={
+    NY_SMALL:{type:'NY_MONOGRAM',size:'SMALL',material:'EMBROIDERY',color:'TONAL',place:'LEFT_CHEST'},
+    DODGERS_SCRIPT:{type:'DODGERS_SCRIPT',size:'FULL_FRONT',material:'EMBROIDERY',color:'WHITE',place:'CENTER_CHEST'},
+    NY_BIG:{type:'NY_MONOGRAM',size:'BIG',material:'PRINT',color:'TONAL',place:'CENTER_CHEST'}
+  }[p];
+  if(!P)return; // CUSTOM: 그대로 둠
+  const set=(id,v)=>{const el=$(id);if(el)el.value=v;};
+  set('#ol-type',P.type);set('#ol-size',P.size);set('#ol-material',P.material);set('#ol-color',P.color);set('#ol-place',P.place);
+}
+function outerLogoClause(ol,hasPng){
+  const typeTxt=ol.type==='DODGERS_SCRIPT'?'the LA Dodgers cursive script logo (exact spelling and letterforms)':'the NY interlocking monogram logo';
+  const sizeMap={SMALL:'SMALL — a small logo on the chest or sleeve, about 5–8% of the front-panel width',BIG:'BIG — a large logo centered on the chest, about 25–38% of the front-panel width',FULL_FRONT:'FULL_FRONT — a Dodgers cursive logo spanning wide across the front panel, about 45–65% of the front-panel width'};
+  const matMap={EMBROIDERY:'dense premium 3D embroidery with clean stitched edges and fine thread texture',PRINT:'a flat, crisp apparel print (not embroidery, not a patch)',RUBBER:'a matte soft-rubber/silicone logo with clean molded edges and subtle relief'};
+  const colorMap={TONAL:'tonal — same color family as the outer shell, only a subtle 5–12% lighter/darker tone-on-tone contrast',SKY_BLUE:'a single SKY BLUE color',WHITE:'a single WHITE color',GREY:'a single GREY color',NAVY:'a single NAVY color',BLACK:'a single BLACK color'};
+  const placeMap={LEFT_CHEST:"the wearer's left chest",RIGHT_CHEST:"the wearer's right chest",CENTER_CHEST:'the center chest',CENTER_BACK:'the center back',LEFT_SLEEVE:"the wearer's left sleeve"};
+  return `MLB OUTERWEAR LOGO RULE — Apply the logo strictly per these selected inputs and nothing else. `
+   +`LOGO TYPE: use ${typeTxt}; ${hasPng?'reproduce the EXACT shape, spelling and proportions of the logo shown in the LAST reference image (do not redraw from text)':'render it faithfully'}. Do not reinterpret, distort, or add any other letters, similar marks, extra logos, patches or text. `
+   +`LOGO SIZE: ${sizeMap[ol.size]||sizeMap.SMALL}. `
+   +`LOGO MATERIAL: ${matMap[ol.material]||matMap.EMBROIDERY}. `
+   +`LOGO COLOR: ${colorMap[ol.color]||colorMap.TONAL}; no arbitrary colors, gradients, outlines or multicolor. `
+   +`LOGO PLACEMENT: place the logo ONLY on ${placeMap[ol.place]||placeMap.LEFT_CHEST}; do not let it awkwardly cross zippers, pocket openings, seams or panel lines. `
+   +`Apply exactly ONE logo. PRESERVE everything else — silhouette, material, color, quilting, seams, pockets, zippers, hood and details unchanged; make the logo follow the fabric's curvature, folds, perspective and lighting naturally.`;
+}
 async function openaiEdit(prompt,imgs,n){
   const st=state.settings;if(!st.apiKey)throw new Error('설정에서 API 키를 먼저 입력하세요.');
   const fd=new FormData();fd.append('model',st.model||'gpt-image-2');fd.append('prompt',prompt);
@@ -1017,11 +1065,13 @@ async function doGenerate(){
   try{
     const items=[];
     const isShoeGen=(J.category&&J.category.parent==='SHOES');
+    const isOuterGen=(J.category&&J.category.parent==='OUTERWEAR');
+    const olOn=isOuterGen&&$('#ol-enable')&&$('#ol-enable').checked;
     const teams=isShoeGen?[...state.brief.teams]:[];
     async function saveBatch(raws,team,promptUsed){
       for(let i=0;i<raws.length;i++){
         const raw=raws[i];
-        const logoUrl = isShoeGen ? raw : (state.settings.logoDefault?await applyLogo(raw):raw);
+        const logoUrl = (isShoeGen||olOn) ? raw : (state.settings.logoDefault?await applyLogo(raw):raw);
         const g={id:uid(),name:`${plan.line?plan.line.name:(plan.refs[0]?plan.refs[0].name:'신규')} · ${J.target_season} ${J.category.parent}${team?' ['+team+']':''}${raws.length>1?' #'+(i+1):''}`,season:J.target_season,
           dataUrl:raw,logoUrl,sourceLineId:plan.line?plan.line.id:null,refIds:plan.refs.map(r=>r.id),modelId:plan.model?plan.model.id:null,fabricId:plan.shell?plan.shell.id:null,
           category:J.category,keep:J.keep,replace:J.replace,adopt:J.adopt_from_ref,team,shot:isShoeGen?'product':'look',
@@ -1040,8 +1090,18 @@ async function doGenerate(){
         await saveBatch(raws,team,tPrompt);
       }
     } else {
-      const raws=await openaiEdit(prompt,plan.images,n);
-      await saveBatch(raws,null,prompt);
+      if(olOn){
+        const ol={type:$('#ol-type').value,size:$('#ol-size').value,material:$('#ol-material').value,color:$('#ol-color').value,place:$('#ol-place').value};
+        const teamKey=ol.type==='DODGERS_SCRIPT'?'LA':'NY';
+        const pngImg=(state.settings.teamLogos||{})[teamKey];
+        const imgs=pngImg?[...plan.images,pngImg]:[...plan.images];
+        const oPrompt=prompt+' '+outerLogoClause(ol,!!pngImg);
+        const raws=await openaiEdit(oPrompt,imgs,n);
+        await saveBatch(raws,null,oPrompt);
+      } else {
+        const raws=await openaiEdit(prompt,plan.images,n);
+        await saveBatch(raws,null,prompt);
+      }
     }
     if(items.length>1){pv.classList.add('multi');pv.innerHTML=items.map(g=>`<img src="${g.logoUrl}">`).join('');}
     else{pv.classList.remove('multi');pv.innerHTML=`<img src="${items[0].logoUrl}">`;}
@@ -1501,6 +1561,8 @@ function applyCategory(reset){
   $('#cat-tag').textContent=`· ${C.noun} 기준`;
   const shoe=parent==='SHOES';
   $('#shoe-ref').style.display=shoe?'block':'none';
+  const ol=$('#outer-logo');if(ol)ol.style.display=(parent==='OUTERWEAR')?'block':'none';
+  if(parent==='OUTERWEAR'&&$('#ol-preset'))applyLogoPreset($('#ol-preset').value);
   if(reset){state.brief.keep=new Set(C.keepDefault);state.brief.replace=new Set(C.replaceDefault);state.brief.adopt=new Set(C.adoptDefault);state.brief.fabricType='';state.aiAttrs={};}
   renderPills();if(shoe)renderShoeBal();refreshJSON(true);
 }
@@ -2132,6 +2194,7 @@ function wire(){
   gdrop.addEventListener('drop',e=>{e.preventDefault();gdrop.classList.remove('hot');handleFiles(e.dataTransfer.files,'__gallery');});
   $('#hidden-file').addEventListener('change',e=>{if(e.target.files.length){if(uploadStore==='__capture')addCaptureFiles(e.target.files);else if(uploadStore==='__group')addGroupFiles(e.target.files,groupUploadTarget);else if(uploadStore)handleFiles(e.target.files,uploadStore);}e.target.value='';});
   document.addEventListener('change',e=>{const s=e.target.closest('[data-pu]');if(s){const st=s.dataset.pu,k=s.dataset.puk;state.pu[st]=state.pu[st]||{gender:'',gcat:'',season:''};state.pu[st][k]=s.value;}
+    if(e.target.id==='ol-preset'){applyLogoPreset(e.target.value);}
     if(e.target.id==='wc-season'){state.wcSeason=e.target.value;state.tagFilter='';libGrid('refs');}
     const pf=e.target.closest('#pf-season,#pf-brand,#pf-gender,#pf-fabric,#pf-shoetype');if(pf){const k=pf.id.replace('pf-','');state.prodFilter[k]=pf.value;state.prodShowAll=false;renderProducts();}});
   document.addEventListener('input',e=>{if(e.target.id==='pf-search'){state.prodFilter.search=e.target.value;state.prodShowAll=false;renderProducts();}});
