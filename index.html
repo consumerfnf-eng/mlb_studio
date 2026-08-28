@@ -498,7 +498,8 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
     <h1 class="title">생성 갤러리</h1>
     <p class="sub">생성 결과를 모아봅니다. 카드를 눌러 모델 변경 · 코디 & 디테일 수정 · SHEER/SHIMMER 재조절. 로고는 기본으로 합성됩니다.</p>
     <div class="row" style="justify-content:space-between;margin-bottom:10px">
-      <div class="pillrow" id="gal-filter"></div>
+      <div class="pillrow" id="gal-cat"></div>
+      <div class="pillrow" id="gal-filter" style="margin-top:6px"></div>
       <div class="pillrow" id="gal-life" style="margin-top:6px"></div>
       <div class="row" style="gap:12px"><button class="btn sm" id="btn-gal-upload">＋ 이미지 업로드</button><label class="row" style="font-size:12px;color:var(--ink-70);gap:6px"><input type="checkbox" id="showlogo" checked> 로고 표시</label></div>
     </div>
@@ -765,7 +766,7 @@ const state={
   lines:[],refs:[],models:[],fabrics:[],gallery:[],
   pick:{line:null,refs:new Set(),model:null,fabric:null},
   brief:{keep:new Set(),replace:new Set(),adopt:new Set(),fabricType:'',shoeBal:{upper:40,sole:40},teams:new Set(['NY','LA'])},
-  aiAttrs:{}, jsonDirty:false, galFilter:'all', galLife:'all',
+  aiAttrs:{}, jsonDirty:false, galCat:'all', galFilter:'all', galLife:'all',
   libFilter:{lines:{gender:'ALL',gcat:'ALL',season:'ALL',shoetype:'ALL'},refs:{gender:'ALL',gcat:'ALL',season:'ALL'}},
   pu:{lines:{gender:'',gcat:'',season:''},refs:{gender:'',gcat:'',season:''},models:{gender:'',gcat:'',season:''},fabrics:{gender:'',gcat:'',season:''}},
   libSelMode:{lines:false,refs:false}, libSel:{lines:new Set(),refs:new Set()}, refView:'product', mxSel:null, tagFilter:'', refTrendUpload:false, wcSeason:'', groups:[], groupFilter:'', prodShowAll:false,
@@ -1664,10 +1665,20 @@ function matrixAnalysis(tagged,total,cell){
   out+=`</div>`;
   return out;
 }
+function galCatOf(g){ // 생성물 category.parent 또는 업로드 gcat을 정규화
+  let c=(g.category&&g.category.parent)||g.gcat||'';
+  c=(c||'').toUpperCase();
+  if(c==='OUTER')c='OUTERWEAR';if(c==='BOTTOM')c='BOTTOMS';
+  return c;
+}
 function galleryGrid(){
   const grid=$('#grid-gallery');let items=state.gallery.slice().sort((a,b)=>b.createdAt-a.createdAt);
+  if(state.galCat!=='all')items=items.filter(g=>galCatOf(g)===state.galCat);
   if(state.galFilter!=='all')items=items.filter(g=>g.season===state.galFilter);
   if(state.galLife!=='all')items=items.filter(g=>(g.lifestyle||'')===state.galLife);
+  const cats=[...new Set(state.gallery.map(galCatOf).filter(Boolean))].sort();
+  const catEl=$('#gal-cat');
+  if(catEl)catEl.innerHTML=['all',...cats].map(c=>`<button class="togglepill ${state.galCat===c?'on':''}" data-galcat="${c}">${c==='all'?'전체 카테고리':esc(c)}</button>`).join('');
   const seasons=[...new Set(state.gallery.map(g=>g.season).filter(Boolean))];
   $('#gal-filter').innerHTML=['all',...seasons].map(s=>`<button class="togglepill ${state.galFilter===s?'on':''}" data-filter="${s}">${s==='all'?'전체 시즌':esc(s)}</button>`).join('');
   const lifes=[...new Set(state.gallery.map(g=>g.lifestyle).filter(Boolean))];
@@ -2153,6 +2164,7 @@ function wire(){
     const gdel=e.target.closest('[data-grpdel]');if(gdel){const g=state.groups.find(x=>x.id===gdel.dataset.grpdel);if(!g)return;g.ids=g.ids.filter(id=>id!==gdel.dataset.gitem);saveGroups();renderGroups();return;}
     const gnew=e.target.closest('#grp-new-upload');if(gnew){const nm=prompt('새 그룹 이름 (예: SNEAKERS LOAFER)');if(!nm||!nm.trim())return;const g={id:uid(),name:nm.trim(),ids:[],cat:(state.prodFilter.cat||'SHOES'),createdAt:Date.now()};state.groups.push(g);saveGroups();groupUploadTarget=g.id;uploadStore='__group';$('#hidden-file').click();return;}
     const gcard=e.target.closest('#grid-gallery .card');if(gcard&&!e.target.closest('.x')){openEdit(gcard.dataset.gid);return;}
+    const gcat=e.target.closest('[data-galcat]');if(gcat){state.galCat=gcat.dataset.galcat;galleryGrid();return;}
     const filt=e.target.closest('[data-filter]');if(filt){state.galFilter=filt.dataset.filter;galleryGrid();return;}
     const lf=e.target.closest('[data-life]');if(lf){state.galLife=lf.dataset.life;galleryGrid();return;}
     const lc=e.target.closest('[data-libstore]');if(lc){state.libFilter[lc.dataset.libstore][lc.dataset.axis]=lc.dataset.val;libGrid(lc.dataset.libstore);return;}
