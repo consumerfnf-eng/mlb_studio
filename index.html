@@ -268,8 +268,8 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .arch-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .chipgroup{display:flex;gap:5px;flex-wrap:wrap;align-items:center;width:100%;margin-bottom:5px}
 .chiplabel{font-size:10px;letter-spacing:.06em;color:var(--ink-45);width:48px;flex:0 0 48px}
-.arch-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;max-height:58vh;overflow:auto;padding:2px}
-@media(max-width:760px){.arch-grid{grid-template-columns:repeat(2,1fr)}}
+.arch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;max-height:58vh;overflow:auto;padding:2px}
+@media(max-width:760px){.arch-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}}
 .acard{background:var(--white);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;position:relative;transition:.12s}
 .acard:hover{border-color:var(--sand);box-shadow:var(--shadow)}
 .acard.sel{outline:2px solid var(--pine);outline-offset:-2px}
@@ -676,6 +676,7 @@ async function uploadImages(store,item){
 /* 라우팅: 클라우드 켜져 있고 대상 스토어면 Supabase, 아니면 로컬(IndexedDB) */
 async function storeAll(s){if(cloudOn()&&CLOUD_STORES.includes(s)){try{const rows=await supaSelect(s);rows.forEach(v=>putOf(s,v).catch(()=>{}));return rows;}catch(e){console.warn('cloud load fallback',s,e.message);return allOf(s);}}return allOf(s);}
 async function storePut(s,v){
+  if(s==='gallery'&&authEmail&&!v.owner)v.owner=authEmail; // 생성 결과물은 로그인 계정 소유로
   if(cloudOn()&&CLOUD_STORES.includes(s)){
     try{const up=await uploadImages(s,v);await supaUpsert(s,{id:up.id,data:up});Object.assign(v,up);putOf(s,up).catch(()=>{});return up;}
     catch(e){console.warn('cloud save fallback',s,e.message);try{await putOf(s,v);}catch(_){}toast('클라우드 저장 실패 — 로컬에 저장됨');return v;}
@@ -2194,6 +2195,7 @@ async function boot(){
   if(state.settings.supaBucket==null)state.settings.supaBucket='mlb-studio';
   if(cloudOn())toast('클라우드(Supabase) 연결됨 · 공용 데이터 로드');
   try{state.lines=await storeAll('lines');state.refs=await storeAll('refs');state.models=await storeAll('models');state.fabrics=await storeAll('fabrics');state.gallery=await storeAll('gallery');}catch(e){toast('클라우드 로드 실패, 로컬 데이터로 표시: '+e.message);state.lines=await allOf('lines');state.refs=await allOf('refs');state.models=await allOf('models');state.fabrics=await allOf('fabrics');state.gallery=await allOf('gallery');}
+  state.gallery=(state.gallery||[]).filter(galleryVisible); // 생성 결과물은 로그인 계정 것만
   try{
     let loaded=false;
     if(cloudOn()){try{const sr=await supaSelect('sales');const main=sr.find(x=>x.id==='main')||sr[0];if(main){state.salesRows=main.rows||[];state.salesRaw=main.raw||'';loaded=true;}}catch(e){}}
@@ -2219,11 +2221,16 @@ async function authSignIn(email,password){
   if(!r.ok)throw new Error(j.error_description||j.msg||j.error||'이메일 또는 비밀번호가 올바르지 않습니다.');
   return j; // {access_token, refresh_token, expires_at, user, ...}
 }
+let authEmail='';
+const LEGACY_OWNER='jisoo07@fnfcorp.com'; // owner 없는 기존 생성물은 이 계정 소유로 취급
 function enterApp(session){
   authToken=(session&&session.access_token)||'';
+  authEmail=((session&&session.user&&session.user.email)||'').toLowerCase();
+  if(!authEmail){try{const s=JSON.parse(localStorage.getItem('mlb_session')||sessionStorage.getItem('mlb_session')||'{}');authEmail=(s.email||'').toLowerCase();}catch(e){}}
   const g=$('#login-gate');if(g)g.classList.add('hidden');
   if(!_booted){_booted=true;boot();}
 }
+function galleryVisible(it){const o=(it&&it.owner||'').toLowerCase();return o?o===authEmail:(authEmail===LEGACY_OWNER);}
 async function tryRestore(){
   let saved='';try{saved=localStorage.getItem('mlb_session')||sessionStorage.getItem('mlb_session')||'';}catch(e){}
   if(!saved)return false;
