@@ -446,26 +446,20 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
           <div id="outer-logo" style="display:none">
             <div class="sectlabel" style="margin-top:14px">MLB 로고 (아우터)</div>
             <label class="row" style="font-size:12px;color:var(--ink-70);gap:6px;margin:2px 0 8px"><input type="checkbox" id="ol-enable" checked> 생성 시 로고 적용 (선택값만 반영)</label>
-            <label class="fld">프리셋</label>
-            <select id="ol-preset" class="inp sm" style="margin-bottom:8px">
-              <option value="NY_SMALL">① 기본 — NY 작은 로고 (좌측 가슴·톤온톤)</option>
-              <option value="MONOGRAM_ALLOVER">② 모노그램 올오버 (전판 톤온톤 반복)</option>
-              <option value="DODGERS_SCRIPT">③ Dodgers 자수 (앞판 전체 필기체)</option>
-              <option value="NY_BIG">④ NY 빅로고 (가슴 중앙 크게·톤온톤)</option>
-              <option value="CUSTOM">직접 설정</option>
-            </select>
             <div class="row" style="gap:8px;flex-wrap:wrap">
-              <div style="flex:1;min-width:130px"><label class="fld">로고 타입</label><select id="ol-type" class="inp sm"><option value="NY_MONOGRAM">NY 모노그램</option><option value="DODGERS_SCRIPT">Dodgers 필기체</option></select></div>
-              <div style="flex:1;min-width:130px"><label class="fld">크기</label><select id="ol-size" class="inp sm"><option value="SMALL">SMALL (가슴·소매 작게)</option><option value="BIG">BIG (가슴 중앙 크게)</option><option value="FULL_FRONT">FULL_FRONT (앞판 전체)</option><option value="ALLOVER">ALLOVER (전판 톤온톤 반복)</option></select></div>
+              <div style="flex:1;min-width:130px"><label class="fld">① 종류</label><select id="ol-type" class="inp sm"><option value="NY">NY (인터로킹)</option><option value="LA">LA (인터로킹)</option><option value="DODGERS">Dodgers (필기체)</option><option value="MONOGRAM_ALLOVER">모노그램 올오버 (전판)</option></select></div>
+              <div style="flex:1;min-width:130px" id="ol-size-wrap"><label class="fld">② 크기</label><select id="ol-size" class="inp sm"><option value="SMALL">SMALL (작게)</option><option value="BIG">BIG (크게)</option><option value="FULL_FRONT">FULL_FRONT (앞판 전체)</option></select></div>
             </div>
             <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">
-              <div style="flex:1;min-width:130px"><label class="fld">소재</label><select id="ol-material" class="inp sm"><option value="EMBROIDERY">자수</option><option value="PRINT">프린트</option><option value="RUBBER">러버</option></select></div>
-              <div style="flex:1;min-width:130px"><label class="fld">컬러</label><select id="ol-color" class="inp sm"><option value="TONAL">톤온톤</option><option value="SKY_BLUE">SKY BLUE</option><option value="WHITE">WHITE</option><option value="GREY">GREY</option><option value="NAVY">NAVY</option><option value="BLACK">BLACK</option></select></div>
-              <div style="flex:1;min-width:130px"><label class="fld">위치</label><select id="ol-place" class="inp sm"><option value="LEFT_CHEST">좌측 가슴</option><option value="RIGHT_CHEST">우측 가슴</option><option value="CENTER_CHEST">가슴 중앙</option><option value="CENTER_BACK">등판 중앙</option><option value="LEFT_SLEEVE">좌측 소매</option></select></div>
+              <div style="flex:1;min-width:130px"><label class="fld">③ 효과</label><select id="ol-material" class="inp sm"><option value="EMBROIDERY">자수</option><option value="PRINT">프린트</option><option value="RUBBER">러버</option></select></div>
+              <div style="flex:1;min-width:130px" id="ol-place-wrap"><label class="fld">④ 위치</label><select id="ol-place" class="inp sm"></select></div>
+              <div style="flex:1;min-width:130px"><label class="fld">⑤ 컬러</label><select id="ol-color" class="inp sm"><option value="TONAL">톤온톤</option><option value="SKY_BLUE">SKY BLUE</option><option value="WHITE">WHITE</option><option value="GREY">GREY</option><option value="NAVY">NAVY</option><option value="BLACK">BLACK</option></select></div>
             </div>
             <div class="hint" style="margin-top:6px">설정에서 NY·LA(Dodgers) 로고 PNG를 등록하면 그 형태를 그대로 반영합니다. 없으면 텍스트 기반으로 그립니다.</div>
           </div>
 
+            <div class="slider-wrap">
+            <div class="slider-head"><span class="lab">디자인 밸런스</span><span class="val" id="balance-v">35</span></div>
             <input type="range" id="balance" min="0" max="100" value="35">
             <div class="row" style="justify-content:space-between;margin-top:3px"><span class="slider-hint" style="margin:0">◀ MLB 라인</span><span class="slider-hint" id="balance-h" style="margin:0;color:var(--pine);font-weight:600"></span><span class="slider-hint" style="margin:0">레퍼런스 ▶</span></div>
           </div>
@@ -815,11 +809,14 @@ function shimmerHint(v){v=+v;return v<12?'매트':v<38?'새틴 광':v<68?'글로
 function balanceHint(b){b=+b;return b<20?'원형 강하게 유지':b<45?'라인 우선':b<70?'균형':'레퍼런스 주도';}
 function srWord(v){return v<=0?null:v<=33?'lightly':v<=66?'moderately':'strongly';}
 function balWord(v){v=+v;return v<20?'driven almost entirely by the MLB base line, with only a faint hint of the reference':v<45?'leaning toward the MLB base line, lightly informed by the reference':v<70?'a balanced blend of the MLB base line and the reference':v<90?'driven mainly by the reference, kept coherent with the MLB base line':'taken almost entirely from the reference';}
+function colorBalWord(v){v=+v;return v<20?'the colorway is the MLB base line colors exactly — same colors and color blocking as the MLB line':v<40?'an MLB-similar tone — stay in the MLB base line color family, with only a slight refined variation':v<60?'a NEW colorway — propose a fresh, season-appropriate color story that is NOT copied from the MLB line nor the reference (a new original palette for this product)':v<80?'a reference-similar tone — stay in the REFERENCE color family, with only a slight variation':'the REFERENCE colors exactly — match the reference image color, tones and color blocking';}
+function colorBalHint(v){v=+v;return v<20?'MLB 컬러':v<40?'MLB 유사 톤':v<60?'NEW 컬러':v<80?'레퍼런스 유사 톤':'레퍼런스 톤';}
 function shoeBalClauses(J,noun){
   const sb=J.shoe_balance;if(!sb)return[];
   const out=[];
   if(sb.upper!=null)out.push(`UPPER BALANCE — the upper (panels, material, overlays, collar, tongue, lacing area) is ${balWord(sb.upper)}.`);
   if(sb.sole!=null)out.push(`SOLE BALANCE — the sole unit (midsole height and shape, outsole tooling, stack) is ${balWord(sb.sole)}.`);
+  if(sb.color!=null)out.push(`COLOR BALANCE — ${colorBalWord(sb.color)}. This controls color only; do not let it change the silhouette or structure set by the balance settings above.`);
   return out;
 }
 function adoptClauses(J,noun){
@@ -912,9 +909,9 @@ function buildDesignJSON(){
     target_season:target, source_season:source,
     category:{parent,sub,noun:C.noun},
     keep:[...state.brief.keep], replace:[...state.brief.replace], adopt_from_ref:[...state.brief.adopt],
-    shoe_balance:(parent==='SHOES'?{...state.brief.shoeBal}:null),
+    shoe_balance:(parent==='SHOES'?{...state.brief.shoeBal,color:+($('#balance')?$('#balance').value:50)}:null),
     garment:g,
-    design_balance:+$('#balance').value/100,
+    design_balance:(parent==='SHOES'?null:+$('#balance').value/100),
     branding:{brand:'MLB',logo:'small refined rectangular chest logo',logo_position:'upper left chest',logo_scale:'subtle'},
     priority:{model:plan.model?'model reference':'base image',garment_structure:'reference image',brand_rules:'MLB DNA'},
     notes:$('#extra').value.trim()
@@ -996,19 +993,23 @@ function rolesToText(roles){return roles.map((r,i)=>`image ${i+1}: ${r}`).join('
 function updatePromptPrev(){const plan=computePlan();$('#promptprev').textContent=jsonToPrompt(currentJSON(),plan);$('#btn-gen').disabled=!(state.pick.line||state.pick.refs.size);}
 
 /* ---------- OpenAI ---------- */
-function applyLogoPreset(p){
-  const P={
-    NY_SMALL:{type:'NY_MONOGRAM',size:'SMALL',material:'EMBROIDERY',color:'TONAL',place:'LEFT_CHEST'},
-    MONOGRAM_ALLOVER:{type:'NY_MONOGRAM',size:'ALLOVER',material:'PRINT',color:'TONAL',place:'CENTER_CHEST'},
-    DODGERS_SCRIPT:{type:'DODGERS_SCRIPT',size:'FULL_FRONT',material:'EMBROIDERY',color:'WHITE',place:'CENTER_CHEST'},
-    NY_BIG:{type:'NY_MONOGRAM',size:'BIG',material:'PRINT',color:'TONAL',place:'CENTER_CHEST'}
-  }[p];
-  if(!P)return; // CUSTOM: 그대로 둠
-  const set=(id,v)=>{const el=$(id);if(el)el.value=v;};
-  set('#ol-type',P.type);set('#ol-size',P.size);set('#ol-material',P.material);set('#ol-color',P.color);set('#ol-place',P.place);
+const OL_PLACES={SMALL:[['LEFT_CHEST','좌측 가슴'],['RIGHT_CHEST','우측 가슴'],['LEFT_SLEEVE','좌측 소매']],BIG:[['CENTER_CHEST','가슴 중앙'],['CENTER_BACK','등판 중앙']]};
+function syncLogoControls(){
+  const type=$('#ol-type'),size=$('#ol-size'),sizeWrap=$('#ol-size-wrap'),place=$('#ol-place'),placeWrap=$('#ol-place-wrap');
+  if(!type)return;
+  const isAllover=type.value==='MONOGRAM_ALLOVER';
+  // 모노그램 올오버 = 전판 고정 → 크기·위치 숨김
+  if(sizeWrap)sizeWrap.style.display=isAllover?'none':'';
+  const sz=isAllover?'ALLOVER':size.value;
+  // 크기에 맞는 위치만 채우기 (FULL_FRONT·ALLOVER는 위치 없음=전판)
+  const opts=OL_PLACES[sz]||null;
+  if(placeWrap)placeWrap.style.display=opts?'':'none';
+  if(opts){const cur=place.value;place.innerHTML=opts.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');if(opts.some(o=>o[0]===cur))place.value=cur;}
 }
+function applyLogoPreset(){/* 프리셋 폐지 — syncLogoControls로 대체 */syncLogoControls();}
 function outerLogoClause(ol,hasPng){
-  const typeTxt=ol.type==='DODGERS_SCRIPT'?'the LA Dodgers cursive script logo (exact spelling and letterforms)':'the NY interlocking monogram logo';
+  const typeMap={NY:'the NY interlocking monogram logo',LA:'the LA interlocking monogram logo',DODGERS:'the LA Dodgers cursive script logo (exact spelling and letterforms)',MONOGRAM_ALLOVER:'the MLB monogram (interlocking team monogram)'};
+  const typeTxt=typeMap[ol.type]||typeMap.NY;
   const sizeMap={SMALL:'SMALL — a small logo on the chest or sleeve, about 5–8% of the front-panel width',BIG:'BIG — a large logo centered on the chest, about 25–38% of the front-panel width',FULL_FRONT:'FULL_FRONT — a Dodgers cursive logo spanning wide across the front panel, about 45–65% of the front-panel width',ALLOVER:'ALL-OVER — the monogram repeated as an evenly tiled tone-on-tone pattern covering the entire front of the outerwear (not a single logo), subtle and integrated into the fabric'};
   const matMap={EMBROIDERY:'dense premium 3D embroidery with clean stitched edges and fine thread texture',PRINT:'a flat, crisp apparel print (not embroidery, not a patch)',RUBBER:'a matte soft-rubber/silicone logo with clean molded edges and subtle relief'};
   const colorMap={TONAL:'tonal — same color family as the outer shell, only a subtle 5–12% lighter/darker tone-on-tone contrast',SKY_BLUE:'a single SKY BLUE color',WHITE:'a single WHITE color',GREY:'a single GREY color',NAVY:'a single NAVY color',BLACK:'a single BLACK color'};
@@ -1021,6 +1022,10 @@ function outerLogoClause(ol,hasPng){
    +(ol.size==='ALLOVER'
       ? `PLACEMENT: tile the monogram evenly across the whole front; keep it tone-on-tone and let it follow the fabric's curvature, folds, perspective and lighting. `
       : `LOGO PLACEMENT: place the logo ONLY on ${placeMap[ol.place]||placeMap.LEFT_CHEST}; do not let it awkwardly cross zippers, pocket openings, seams or panel lines. Apply exactly ONE logo. `)
+   +`LOGO SURFACE LOCK — apply the logo EXCLUSIVELY on the physical fabric surface of this outerwear, clipped to the outerwear panel boundaries. The logo must NEVER appear on any inner top/dress, exposed skin, hair, the zipper/opening gap, accessories or the background, and must NEVER float across the open area between the left and right front panels. It must follow the outerwear's folds, seams, volume, perspective and lighting; do not repeat or extend it onto any other surface. `
+   +(ol.place==='CENTER_CHEST'&&ol.size!=='ALLOVER'
+      ? `CENTER-CHEST RULE — position the logo on the UPPER-CHEST area of the outerwear only (not below the chest, not across the full torso), within about 25–35% of the outerwear front width. Because a single continuous center-chest logo is selected, show the outerwear ZIPPED / FASTENED CLOSED so the logo sits on ONE continuous fabric surface (it may cross the closed zipper line but must stay attached to the left and right outerwear panels). Never render a continuous centered logo bridging an open front or landing on the inner garment. `
+      : ``)
    +`PRESERVE everything else — silhouette, material, color, quilting, seams, pockets, zippers, hood and details unchanged.`;
 }
 async function openaiEdit(prompt,imgs,n){
@@ -1096,8 +1101,10 @@ async function doGenerate(){
       }
     } else {
       if(olOn){
-        const ol={type:$('#ol-type').value,size:$('#ol-size').value,material:$('#ol-material').value,color:$('#ol-color').value,place:$('#ol-place').value};
-        const teamKey=ol.type==='DODGERS_SCRIPT'?'LA':'NY';
+        const type=$('#ol-type').value;
+        const size=(type==='MONOGRAM_ALLOVER')?'ALLOVER':$('#ol-size').value;
+        const ol={type,size,material:$('#ol-material').value,color:$('#ol-color').value,place:($('#ol-place')?$('#ol-place').value:'')};
+        const teamKey=(type==='LA'||type==='DODGERS')?'LA':'NY'; // Dodgers·LA→LA PNG, NY·모노그램→NY PNG
         const pngImg=(state.settings.teamLogos||{})[teamKey];
         const imgs=pngImg?[...plan.images,pngImg]:[...plan.images];
         const oPrompt=prompt+' '+outerLogoClause(ol,!!pngImg);
@@ -1567,7 +1574,10 @@ function applyCategory(reset){
   const shoe=parent==='SHOES';
   $('#shoe-ref').style.display=shoe?'block':'none';
   const ol=$('#outer-logo');if(ol)ol.style.display=(parent==='OUTERWEAR')?'block':'none';
-  if(parent==='OUTERWEAR'&&$('#ol-preset'))applyLogoPreset($('#ol-preset').value);
+  if(parent==='OUTERWEAR'&&$('#ol-type'))syncLogoControls();
+  const balLab=document.querySelector('#balance-v')&&document.querySelector('#balance-v').previousElementSibling;
+  if(balLab)balLab.textContent=shoe?'컬러 밸런스':'디자인 밸런스';
+  if($('#balance-h')&&$('#balance')){const bv=+$('#balance').value;$('#balance-h').textContent=shoe?colorBalHint(bv):balanceHint(bv);}
   if(reset){state.brief.keep=new Set(C.keepDefault);state.brief.replace=new Set(C.replaceDefault);state.brief.adopt=new Set(C.adoptDefault);state.brief.fabricType='';state.aiAttrs={};}
   renderPills();if(shoe)renderShoeBal();refreshJSON(true);
 }
@@ -1897,6 +1907,9 @@ async function runEdit(kind,opt){
        +`COLOR & LIGHTING — one camera and one lighting setup: match light direction, exposure, white balance, contrast, shadow density and sharpness. Face, neck, ears and hands must share ONE consistent skin tone (face not brighter/pinker/smoother than neck and hands). Add natural contact shadows under the chin, around the collar and inside the sleeves; remove cutout edges, halos, color bleeding, floating fabric and any pasted-on appearance. `
        +`PRIORITY when references conflict: (1) image 1 for garment design/material/color, (2) image 2 for identity/hair/pose/body/composition/background, (3) natural physical adjustment only for folds and contact shadows. The result must look like ONE original fashion photograph. Do not render legible logo text.`;
     }
+    if((cur.category&&cur.category.parent==='OUTERWEAR')||/OUTER/i.test(cur.gcat||'')){
+      prompt+=` OUTERWEAR-ONLY REPLACEMENT — the selected garment is OUTERWEAR worn as the OUTERMOST layer. STRICTLY PRESERVE the model's existing styling from image 2: inner top/shirt/knit/dress, bottoms (skirt/pants), tights/socks, shoes, bag and all accessories — do NOT restyle, recolor, replace or regenerate any of them; add or replace ONLY the outer layer. Keep clear physical boundaries between the outerwear, the inner clothing and exposed skin; do NOT merge the outerwear with the inner garment and do NOT transfer the outerwear's material, color, quilting, pattern or LOGO onto the inner clothing. LOGO SURFACE LOCK — any logo stays clipped to the OUTERWEAR fabric panels only; it must NEVER appear on the inner top/dress, skin, hair, the open zipper gap, accessories or background, and must NEVER float across the open area between the left and right front panels. If the outerwear hangs open, do NOT draw a continuous centered logo bridging the opening onto the inner garment — keep it on one panel (left chest) or split it naturally at the front edge; a continuous center-chest logo is allowed only when the outerwear is shown closed.`;
+    }
   }
   else if(kind==='cody')prompt=`Make a MINIMAL, LOCALIZED edit to this image. Keep the MLB main product IDENTICAL — same design, silhouette, color, construction and any visible logo/branding unchanged. Change ONLY what is requested: ${opt.text}. Keep the same model, face, pose, framing, background, lighting, colors and overall image quality/resolution exactly as in the original — do not re-render or restyle anything that was not requested.`;
   else if(kind==='shoefinish'){
@@ -2210,7 +2223,7 @@ function wire(){
   gdrop.addEventListener('drop',e=>{e.preventDefault();gdrop.classList.remove('hot');handleFiles(e.dataTransfer.files,'__gallery');});
   $('#hidden-file').addEventListener('change',e=>{if(e.target.files.length){if(uploadStore==='__capture')addCaptureFiles(e.target.files);else if(uploadStore==='__group')addGroupFiles(e.target.files,groupUploadTarget);else if(uploadStore)handleFiles(e.target.files,uploadStore);}e.target.value='';});
   document.addEventListener('change',e=>{const s=e.target.closest('[data-pu]');if(s){const st=s.dataset.pu,k=s.dataset.puk;state.pu[st]=state.pu[st]||{gender:'',gcat:'',season:''};state.pu[st][k]=s.value;}
-    if(e.target.id==='ol-preset'){applyLogoPreset(e.target.value);}
+    if(e.target.id==='ol-type'||e.target.id==='ol-size'){syncLogoControls();}
     if(e.target.id==='wc-season'){state.wcSeason=e.target.value;state.tagFilter='';libGrid('refs');}
     const pf=e.target.closest('#pf-season,#pf-brand,#pf-gender,#pf-fabric,#pf-shoetype');if(pf){const k=pf.id.replace('pf-','');state.prodFilter[k]=pf.value;state.prodShowAll=false;renderProducts();}});
   document.addEventListener('input',e=>{if(e.target.id==='pf-search'){state.prodFilter.search=e.target.value;state.prodShowAll=false;renderProducts();}});
@@ -2263,7 +2276,7 @@ function wire(){
   });
 
   const sync=(id,vid,hid,fn)=>{const el=$('#'+id);el.addEventListener('input',()=>{$('#'+vid).textContent=el.value;if(hid)$('#'+hid).textContent=fn(el.value);refreshJSON();});};
-  sync('balance','balance-v','balance-h',balanceHint);sync('sheer','sheer-v','sheer-h',sheerHint);sync('shimmer','shimmer-v','shimmer-h',shimmerHint);
+  sync('balance','balance-v','balance-h',v=>($('#cat-parent')&&$('#cat-parent').value==='SHOES')?colorBalHint(v):balanceHint(v));sync('sheer','sheer-v','sheer-h',sheerHint);sync('shimmer','shimmer-v','shimmer-h',shimmerHint);
   sync('refmix','refmix-v','refmix-h',refmixHint);
   $('#balance-h').textContent=balanceHint(35);$('#sheer-h').textContent=sheerHint(20);$('#shimmer-h').textContent=shimmerHint(25);if($('#refmix-h'))$('#refmix-h').textContent=refmixHint(50);
   $('#season').addEventListener('change',renderPicks);
