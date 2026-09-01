@@ -432,13 +432,13 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
             <div class="sectlabel" style="margin-top:14px">부위별 밸런스 · 신발</div>
             <div class="hint" style="margin:2px 0 8px">부위별로 MLB 라인에 가깝게(◀) 갈지, 레퍼런스를 따라갈지(▶) 조절합니다.</div>
             <div class="slider-wrap">
-              <div class="slider-head"><span class="lab">UPPER 밸런스</span><span class="val" id="bal-upper-v">40</span></div>
-              <input type="range" id="bal-upper" min="0" max="100" value="40">
+              <div class="slider-head"><span class="lab">UPPER 밸런스</span><span class="val" id="bal-upper-v">50</span></div>
+              <input type="range" id="bal-upper" min="0" max="100" value="50">
               <div class="row" style="justify-content:space-between;margin-top:3px"><span class="slider-hint" style="margin:0">◀ MLB 라인</span><span class="slider-hint" id="bal-upper-h" style="margin:0;color:var(--pine);font-weight:600"></span><span class="slider-hint" style="margin:0">레퍼런스 ▶</span></div>
             </div>
             <div class="slider-wrap">
-              <div class="slider-head"><span class="lab">SOLE 밸런스</span><span class="val" id="bal-sole-v">40</span></div>
-              <input type="range" id="bal-sole" min="0" max="100" value="40">
+              <div class="slider-head"><span class="lab">SOLE 밸런스</span><span class="val" id="bal-sole-v">50</span></div>
+              <input type="range" id="bal-sole" min="0" max="100" value="50">
               <div class="row" style="justify-content:space-between;margin-top:3px"><span class="slider-hint" style="margin:0">◀ MLB 라인</span><span class="slider-hint" id="bal-sole-h" style="margin:0;color:var(--pine);font-weight:600"></span><span class="slider-hint" style="margin:0">레퍼런스 ▶</span></div>
             </div>
           </div>
@@ -780,7 +780,7 @@ const state={
             logoDataUrl:'',logoPos:'bc',logoColor:'dark',logoSize:15,logoDefault:true,teamLogos:{NY:'',LA:''},brandDNA:DNA_DEFAULT,baseModelPrompt:BASE_MODEL_DEFAULT,genCount:2,supaUrl:'',supaKey:'',supaBucket:'mlb-studio'},
   lines:[],refs:[],models:[],fabrics:[],gallery:[],
   pick:{line:null,refs:new Set(),model:null,fabric:null},
-  brief:{keep:new Set(),replace:new Set(),adopt:new Set(),fabricType:'',shoeBal:{upper:40,sole:40},teams:new Set(['NY','LA'])},
+  brief:{keep:new Set(),replace:new Set(),adopt:new Set(),fabricType:'',shoeBal:{upper:50,sole:50},teams:new Set(['NY','LA'])},
   aiAttrs:{}, jsonDirty:false, galCat:'all', galFilter:'all', galLife:'all',
   libFilter:{lines:{gender:'ALL',gcat:'ALL',season:'ALL',shoetype:'ALL'},refs:{gender:'ALL',gcat:'ALL',season:'ALL'}},
   pu:{lines:{gender:'',gcat:'',season:''},refs:{gender:'',gcat:'',season:''},models:{gender:'',gcat:'',season:''},fabrics:{gender:'',gcat:'',season:''}},
@@ -808,7 +808,7 @@ function sheerHint(v){v=+v;return v<12?'불투명':v<38?'부분 시스루':v<68?
 function shimmerHint(v){v=+v;return v<12?'매트':v<38?'새틴 광':v<68?'글로시':'하이글로스';}
 function balanceHint(b){b=+b;return b<20?'원형 강하게 유지':b<45?'라인 우선':b<70?'균형':'레퍼런스 주도';}
 function srWord(v){return v<=0?null:v<=33?'lightly':v<=66?'moderately':'strongly';}
-function balWord(v){v=+v;return v<20?'driven almost entirely by the MLB base line, with only a faint hint of the reference':v<45?'leaning toward the MLB base line, lightly informed by the reference':v<70?'a balanced blend of the MLB base line and the reference':v<90?'driven mainly by the reference, kept coherent with the MLB base line':'taken almost entirely from the reference';}
+function balWord(v){v=+v;return v<20?'driven almost entirely by the MLB base line, with only a faint hint of the reference':v<45?'leaning toward the MLB base line, with the reference lightly informing the details':v<70?'an EQUAL 50/50 blend — VISIBLY and clearly adopt the reference shape and structure for this part (not a faint hint); it must read as much from the reference as from the MLB base line':v<90?'driven MAINLY by the reference for shape and structure; the MLB base line only contributes brand quality and proportion':'taken almost entirely from the reference';}
 function colorBalWord(v){v=+v;return v<20?'the colorway is the MLB base line colors exactly — same colors and color blocking as the MLB line':v<40?'an MLB-similar tone — stay in the MLB base line color family, with only a slight refined variation':v<60?'a NEW colorway — propose a fresh, season-appropriate color story that is NOT copied from the MLB line nor the reference (a new original palette for this product)':v<80?'a reference-similar tone — stay in the REFERENCE color family, with only a slight variation':'the REFERENCE colors exactly — match the reference image color, tones and color blocking';}
 function colorBalHint(v){v=+v;return v<20?'MLB 컬러':v<40?'MLB 유사 톤':v<60?'NEW 컬러':v<80?'레퍼런스 유사 톤':'레퍼런스 톤';}
 function shoeBalClauses(J,noun){
@@ -863,7 +863,14 @@ function computePlan(){
   let refLed=false;
   if(modelMode==='product'){
     // SHOES product shot — base line + references, NO model/person
-    if(line){images.push(line.dataUrl);roles.push(`MLB base form — source of the ${noun} product design (silhouette, proportions, colorway)`);}
+    if(line){
+      const sb=state.brief.shoeBal||{upper:50,sole:50};
+      const upRef=(+sb.upper)>=45, soleRef=(+sb.sole)>=45;
+      let lineRole;
+      if(!upRef&&!soleRef){lineRole=`MLB base form — source of the ${noun} product design (silhouette, proportions, colorway)`;}
+      else{const parts=[upRef?'the UPPER shape/silhouette is LED BY THE REFERENCE image(s), not this base form':'the UPPER follows this MLB base form',soleRef?'the SOLE unit is LED BY THE REFERENCE image(s), not this base form':'the SOLE follows this MLB base form'];lineRole=`MLB base form — brand identity, proportion baseline and finishing-quality reference (do NOT force this base form's shape onto parts the reference leads): ${parts.join('; ')}`;}
+      images.push(line.dataUrl);roles.push(lineRole);
+    }
     else if(designRefs.length){const primary=designRefs[0];images.push(primary.dataUrl);roles.push(`PRIMARY ${noun} reference — build the ${noun} ON this shape, silhouette, proportions and colorway (this is the base form)`);pushList(refs.filter(r=>r!==primary));pushShell();return{line,model,refs,shell,images,roles,noun,hasModel:false,modelMode,refLed:true,balance:bal,refMix:rm,refMixClause};}
     pushList(refs);pushShell();
   }else if(modelMode==='image'){
