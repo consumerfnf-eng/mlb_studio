@@ -187,6 +187,20 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .mx-drawer{margin-top:16px;border-top:2px solid var(--pine,#33463b);padding-top:12px}
 .mx-drawer .dh{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
 .mx-drawer .dh b{font-size:14px}
+.mxg-board{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 10px;align-items:flex-start}
+.mxg-col{flex:0 0 200px;background:var(--paper,#efeae0);border:1px solid var(--line);border-radius:10px;padding:8px}
+.mxg-col.drag-over{border-color:var(--pine,#33463b);box-shadow:0 0 0 2px rgba(51,70,59,.25)}
+.mxg-colhead{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;margin-bottom:8px}
+.mxg-colhead .cnt{color:var(--ink-45);font-weight:400}
+.mxg-colhead .sp{flex:1}
+.mxg-colhead button{border:none;background:none;cursor:pointer;color:var(--ink-45);font-size:12px;padding:0 2px}
+.mxg-colhead button:hover{color:var(--pine)}
+.mxg-drop{display:flex;flex-wrap:wrap;gap:6px;min-height:60px}
+.mxg-card{position:relative;width:54px;cursor:grab}
+.mxg-card .th{display:block;width:54px;height:54px;border-radius:8px;background:var(--line-2) center/cover no-repeat;border:1px solid var(--line)}
+.mxg-card.trend .th{outline:2px solid #c0392b;outline-offset:-2px}
+.mxg-card.dragging{opacity:.4}
+.mxg-addcol{flex:0 0 auto;align-self:center;border:1px dashed var(--sand);background:none;border-radius:10px;padding:10px 12px;cursor:pointer;color:var(--ink-45);font-size:12px}
 .mx-drawer .dh .lf{font-size:11px;color:#c0392b;background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.25);border-radius:10px;padding:2px 8px;margin-left:6px}
 @media(max-width:640px){.mx td{min-width:92px;height:60px}.mx .mxthumb{width:40px;height:40px}.mx th{font-size:10px}}
 .mx td.trendcell{box-shadow:inset 0 0 0 2px #c0392b}
@@ -409,10 +423,11 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
           <div id="pick-refs" class="pickbar"></div>
           <div id="cap-zone" class="drop" style="padding:12px;margin-top:8px" tabindex="0"><b>캡처 붙여넣기</b> (여기 클릭 후 <b>Ctrl+V</b>) · 또는 클릭해서 파일 선택<br><span style="font-size:12px">불러오기 안 되는 브랜드 이미지는 캡처해서 바로 레퍼런스로 추가하세요 (즉시 저장·CORS 무관)</span></div>
           <div class="grid2" style="gap:18px">
-            <div><div class="sectlabel">3 · 모델</div>
+            <div id="sec-model"><div class="sectlabel">3 · 모델 <span class="hint" id="model-toggle" style="margin:0;cursor:pointer;color:var(--pine);display:none">— 펼치기</span></div>
+              <div id="model-body">
               <select id="model-source" class="inp" style="margin-bottom:6px"><option value="idol">기본 아이돌 프롬프트</option><option value="preserve">베이스 라인 모델 유지</option></select>
               <div class="hint" style="margin:0 0 8px">아래에서 모델 이미지를 선택하면 그 인물로 대체합니다.</div>
-              <div id="pick-models" class="cards"></div></div>
+              <div id="pick-models" class="cards"></div></div></div>
             <div><div class="sectlabel">4 · SHELL 원단 (선택)</div><div id="pick-fabrics" class="cards"></div></div>
           </div>
         </div>
@@ -762,6 +777,9 @@ const GCAT_OPTS=['OUTER','TOP','BOTTOM','DRESS','ACC','SHOES'];
 const LIFE_APPAREL=['outdoor','wellness','sportive','street','old money'];
 const LIFE_SHOES=['wellness','sportive&old money','street','daily','outdoor'];
 const SHOE_TYPES=['LINER','CHUNKY','RUNNER','SNEAKERS','SUMMER','WINTER'];
+const MX_LIFE_ROWS=['street','daily','sportive&old money','wellness']; // 매트릭스 세로(위→아래), OUTDOOR 제외
+const MX_TYPE_COLS=['CHUNKY','RUNNER','LINER','SNEAKERS']; // 매트릭스 가로(왼→오), 항상 표시
+const MX_TYPE_COLS_MORE=['SUMMER','WINTER']; // 펼치기 시 표시
 function isShoe(g){return !!(g&&((g.category&&g.category.parent==='SHOES')||g.gcat==='SHOES'));}
 function lifeSetFor(g){return isShoe(g)?LIFE_SHOES:LIFE_APPAREL;}
 const GENDER_MAP={women:'WOMEN',w:'WOMEN','여성':'WOMEN','우먼':'WOMEN','여':'WOMEN',men:'MEN',m:'MEN','남성':'MEN','맨':'MEN','남':'MEN',unisex:'UNISEX','공용':'UNISEX','유니섹스':'UNISEX'};
@@ -784,7 +802,7 @@ const state={
   aiAttrs:{}, jsonDirty:false, galCat:'all', galFilter:'all', galLife:'all',
   libFilter:{lines:{gender:'ALL',gcat:'ALL',season:'ALL',shoetype:'ALL'},refs:{gender:'ALL',gcat:'ALL',season:'ALL'}},
   pu:{lines:{gender:'',gcat:'',season:''},refs:{gender:'',gcat:'',season:''},models:{gender:'',gcat:'',season:''},fabrics:{gender:'',gcat:'',season:''}},
-  libSelMode:{lines:false,refs:false}, libSel:{lines:new Set(),refs:new Set()}, refView:'product', mxSel:null, tagFilter:'', refTrendUpload:false, wcSeason:'', groups:[], groupFilter:'', prodShowAll:false,
+  libSelMode:{lines:false,refs:false}, libSel:{lines:new Set(),refs:new Set()}, refView:'product', mxSel:null, mxExpand:false, mxGroups:{}, tagFilter:'', refTrendUpload:false, wcSeason:'', groups:[], groupFilter:'', prodShowAll:false,
   products:[], prodLoaded:false, prodFilter:{season:'',brand:'',gender:'',fabric:'',search:'',cat:''},
   salesRows:[], salesRaw:''
 };
@@ -1281,6 +1299,9 @@ function saveGroups(){
   if(cloudOn()){supaPutRow('groups',{id:'main',data:{id:'main',...doc}}).catch(()=>{});}
 }
 function loadGroupsLocal(){try{const d=JSON.parse(localStorage.getItem('mlb_groups')||'null');if(d&&Array.isArray(d.groups))state.groups=d.groups;}catch(e){}}
+function saveMxGroups(){try{localStorage.setItem('mlb_mxgroups',JSON.stringify(state.mxGroups));}catch(e){}if(cloudOn()){supaPutRow('groups',{id:'mxmain',data:{id:'mxmain',mxGroups:state.mxGroups}}).catch(()=>{});}}
+function loadMxGroupsLocal(){try{const d=JSON.parse(localStorage.getItem('mlb_mxgroups')||'null');if(d&&typeof d==='object')state.mxGroups=d;}catch(e){}}
+function mxCellGroups(key){return state.mxGroups[key]||[];}
 function refById(id){ // id: ref id 또는 'prod_<num>'
   if(String(id).startsWith('prod_')){const pid=String(id).slice(5);const p=(state.products||[]).find(x=>String(x.id)===pid);return p?productAsRef(p):null;}
   return state.refs.find(r=>r.id===id)||null;
@@ -1584,6 +1605,11 @@ function applyCategory(reset){
   if(parent==='OUTERWEAR'&&$('#ol-type'))syncLogoControls();
   const balLab=document.querySelector('#balance-v')&&document.querySelector('#balance-v').previousElementSibling;
   if(balLab)balLab.textContent=shoe?'컬러 밸런스':'디자인 밸런스';
+  const mbody=$('#model-body'),mtog=$('#model-toggle');
+  if(mbody&&mtog){ // 신발은 모델 미사용 → 기본 접힘
+    if(shoe){mbody.style.display='none';mtog.style.display='';mtog.textContent='— 펼치기 (신발은 선택 불필요)';}
+    else{mbody.style.display='';mtog.style.display='none';}
+  }
   if($('#balance-h')&&$('#balance')){const bv=+$('#balance').value;$('#balance-h').textContent=shoe?colorBalHint(bv):balanceHint(bv);}
   if(reset){state.brief.keep=new Set(C.keepDefault);state.brief.replace=new Set(C.replaceDefault);state.brief.adopt=new Set(C.adoptDefault);state.brief.fabricType='';state.aiAttrs={};}
   renderPills();if(shoe)renderShoeBal();refreshJSON(true);
@@ -1629,7 +1655,7 @@ async function classifyRefsTags(items){
   libGrid('refs');if(state.refView==='matrix')renderRefMatrix();
   toast('레퍼런스 자동분류 완료');
 }
-const LIFE_SHORT={'wellness':'WELLNESS','sportive&old money':'SPORTIVE×OLD MONEY','street':'STREET','daily':'DAILY','outdoor':'OUTDOOR','street&sportive':'STREET'};
+const LIFE_SHORT={'wellness':'WELLNESS','sportive&old money':'OLD MONEY & SPORTIVE','street':'STREET','daily':'DAILY','outdoor':'OUTDOOR','street&sportive':'STREET'};
 function normTags(str){return (str||'').split(/[,\n]/).map(s=>s.replace(/^#/,'').trim()).filter(Boolean);}
 function tagCounts(){const m=new Map();const cat=state.prodFilter.cat;allRefs().forEach(r=>{if(state.wcSeason&&r.season!==state.wcSeason)return;if(cat){const g=r._product?'SHOES':(r.gcat||'');if(g!==cat)return;}(r.hashtags||[]).forEach(t=>{const k=t.toLowerCase();m.set(k,(m.get(k)||0)+1);});});return m;}
 function refScore(r,counts){const hs=r.hashtags||[];if(!hs.length)return 0;return Math.max(...hs.map(t=>counts.get(t.toLowerCase())||0));}
@@ -1662,16 +1688,18 @@ function setRefView(v){
 }
 function renderRefMatrix(){
   const box=$('#matrix-refs');if(!box)return;
-  const scope=allRefs().filter(r=>!state.wcSeason||r.season===state.wcSeason);
-  const tagged=scope.filter(r=>r.shoeType&&r.lifestyle);
+  const scope=allRefs().filter(r=>(!state.wcSeason||r.season===state.wcSeason)&&r.gcat==='SHOES'); // 신발 레퍼만(옷 제외)
+  const tagged=scope.filter(r=>r.shoeType&&MX_LIFE_ROWS.includes(r.lifestyle)); // OUTDOOR 제외
   const cell=(st,lf)=>tagged.filter(r=>r.shoeType===st&&r.lifestyle===lf);
   const total=tagged.length;
-  let maxCell=0;SHOE_TYPES.forEach(st=>LIFE_SHOES.forEach(lf=>{const n=cell(st,lf).length;if(n>maxCell)maxCell=n;}));
+  const cols=state.mxExpand?[...MX_TYPE_COLS,...MX_TYPE_COLS_MORE]:MX_TYPE_COLS; // 가로=슈즈타입
+  const rowsAxis=MX_LIFE_ROWS; // 세로=라이프스타일
+  let maxCell=0;cols.forEach(st=>rowsAxis.forEach(lf=>{const n=cell(st,lf).length;if(n>maxCell)maxCell=n;}));
   const heat=n=>{if(!n)return'';const a=(0.10+0.75*(n/(maxCell||1))).toFixed(2);return`background-color:rgba(51,70,59,${a});`;};
   const darkTxt=n=>maxCell&&(n/maxCell)>0.55?'color:#fff;':'';
-  const head=`<tr><th class="rowhead">슈즈타입 \\ 라이프스타일</th>${LIFE_SHOES.map(lf=>`<th>${LIFE_SHORT[lf]}</th>`).join('')}</tr>`;
-  const rows=SHOE_TYPES.map(st=>{
-    const tds=LIFE_SHOES.map(lf=>{
+  const head=`<tr><th class="rowhead">라이프스타일 \\ 슈즈타입</th>${cols.map(st=>`<th>${st}</th>`).join('')}</tr>`;
+  const rows=rowsAxis.map(lf=>{
+    const tds=cols.map(st=>{
       const items=cell(st,lf);const n=items.length;const tn=items.filter(i=>trendActive(i)).length;
       const hot=state.mxSel&&state.mxSel.st===st&&state.mxSel.lf===lf?'hot':'';
       const tc=tn?'trendcell':'';
@@ -1680,21 +1708,25 @@ function renderRefMatrix(){
       const fire=tn?`<span class="fire">🔥${tn}</span>`:'';
       return`<td class="${hot} ${tc}" data-mxst="${st}" data-mxlf="${lf}" style="${heat(n)}">${fire}<div class="cellwrap"><span class="cellcnt" style="${darkTxt(n)}">${n}</span>${thumbs}</div></td>`;
     }).join('');
-    return`<tr><th class="rowhead">${st}</th>${tds}</tr>`;
+    return`<tr><th class="rowhead">${LIFE_SHORT[lf]}</th>${tds}</tr>`;
   }).join('');
   let html=`<table class="mx">${head}${rows}</table>`;
+  html+=`<div class="row" style="margin-top:8px"><button class="btn sm" data-mxexpand="1">${state.mxExpand?'－ SUMMER · WINTER 접기':'＋ SUMMER · WINTER 펼치기'}</button></div>`;
   html+=`<div class="mx-legend"><span><span class="sw" style="background:rgba(51,70,59,.7)"></span>비중 높음(레퍼런스 많음)</span><span><span class="sw" style="box-shadow:inset 0 0 0 2px #c0392b;background:#fff"></span>🔥 트렌드 아이템 포함</span></div>`;
   const untagged=scope.filter(r=>!r.shoeType||!r.lifestyle).length;
   if(untagged)html+=`<div class="hint" style="margin-top:8px">미분류 레퍼런스 ${untagged}개 — 'AI 자동분류' 또는 카드 클릭으로 태그를 지정하면 매트릭스에 반영됩니다.</div>`;
   html+=matrixAnalysis(tagged,total,cell);
   if(state.mxSel){
     const {st,lf}=state.mxSel,items=cell(st,lf);
-    const cards=items.length?items.map(it=>{
-      const trend=trendActive(it)?'trend':'';const tb=trendActive(it)?`<span class="trend-badge">TREND</span>`:'';
-      const htags=(it.hashtags&&it.hashtags.length)?`<div class="htags">${it.hashtags.slice(0,5).map(t=>`<span class="htag">#${esc(t)}</span>`).join('')}</div>`:'';
-      return`<div class="card ${trend}" data-mxopen="${it.id}">${tb}<span class="thumb" style="background-image:url('${it.dataUrl}')"></span><div class="meta"><div class="nm">${esc(it.name)}</div>${htags}</div></div>`;
-    }).join(''):`<div class="empty" style="grid-column:1/-1">이 조합에 레퍼런스가 없습니다.</div>`;
-    html+=`<div class="mx-drawer"><div class="dh"><div><b>${st}</b><span class="lf">${LIFE_SHORT[lf]}</span> <span class="cnt">· ${items.length}개</span></div><button class="btn sm" data-mxclose="1">닫기 ✕</button></div><div class="cards lg">${cards}</div></div>`;
+    const cellKey=st+'|'+lf;
+    const grps=mxCellGroups(cellKey);
+    const inG=new Set(grps.flatMap(g=>g.ids));
+    const cardHtml=it=>{const trend=trendActive(it)?'trend':'';return`<div class="mxg-card ${trend}" draggable="true" data-mxgcard="${it.id}" title="${esc(it.name||'')}"><span class="th" style="background-image:url('${it.dataUrl}')"></span></div>`;};
+    const colHtml=(title,arr,gid)=>`<div class="mxg-col" data-mxgcol="${gid||'__un'}"><div class="mxg-colhead">${gid?`<span data-mxgname="${gid}" style="cursor:text">${esc(title)}</span>`:`<span>${title}</span>`}<span class="cnt">${arr.length}</span><span class="sp"></span>${gid?`<button data-mxgren="${gid}" title="이름변경">✎</button><button data-mxgdel="${gid}" title="열 삭제">🗑</button>`:''}</div><div class="mxg-drop" data-mxgdrop="${gid||'__un'}">${arr.map(cardHtml).join('')||'<span class="hint" style="margin:0">여기로 드래그</span>'}</div></div>`;
+    const board=colHtml('미분류',items.filter(it=>!inG.has(it.id)),'')
+      +grps.map(g=>colHtml(g.name,items.filter(it=>g.ids.includes(it.id)),g.id)).join('')
+      +`<button class="mxg-addcol" data-mxgadd="${cellKey}">＋ 열 추가</button>`;
+    html+=`<div class="mx-drawer"><div class="dh"><div><b>${st}</b><span class="lf">${LIFE_SHORT[lf]}</span> <span class="cnt">· ${items.length}개</span> <span class="hint" style="margin:0">— 사진을 드래그해 2차 그룹으로 묶으세요</span></div><button class="btn sm" data-mxclose="1">닫기 ✕</button></div><div class="mxg-board">${board}</div></div>`;
   }
   box.innerHTML=html;
 }
@@ -2206,6 +2238,12 @@ function renderAll(){['lines','refs','models','fabrics'].forEach(libGrid);refres
 function fillSeasonSelects(){$('#season').innerHTML=SEASONS.map(s=>`<option ${s==='27FW'?'selected':''}>${s}</option>`).join('');}
 
 function wire(){
+  // 매트릭스 셀 2차 그룹핑 드래그앤드롭
+  let mxgDrag=null;
+  document.addEventListener('dragstart',e=>{const c=e.target.closest('[data-mxgcard]');if(!c)return;mxgDrag=c.dataset.mxgcard;c.classList.add('dragging');try{e.dataTransfer.setData('text/plain',mxgDrag);e.dataTransfer.effectAllowed='move';}catch(_){}});
+  document.addEventListener('dragend',e=>{const c=e.target.closest('[data-mxgcard]');if(c)c.classList.remove('dragging');mxgDrag=null;$$('.mxg-col').forEach(x=>x.classList.remove('drag-over'));});
+  document.addEventListener('dragover',e=>{const d=e.target.closest('[data-mxgdrop]');if(!d)return;e.preventDefault();const col=d.closest('.mxg-col');$$('.mxg-col').forEach(x=>x.classList.toggle('drag-over',x===col));});
+  document.addEventListener('drop',e=>{const d=e.target.closest('[data-mxgdrop]');if(!d||!state.mxSel)return;e.preventDefault();const id=mxgDrag||(e.dataTransfer&&e.dataTransfer.getData('text/plain'));if(!id)return;const key=state.mxSel.st+'|'+state.mxSel.lf;const target=d.dataset.mxgdrop;const arr=(state.mxGroups[key]=state.mxGroups[key]||[]);arr.forEach(g=>{g.ids=g.ids.filter(x=>x!==id);});if(target!=='__un'){const g=arr.find(x=>x.id===target);if(g&&!g.ids.includes(id))g.ids.push(id);}saveMxGroups();renderRefMatrix();});
   $('#nav').addEventListener('click',e=>{const b=e.target.closest('button[data-v]');if(b)switchView(b.dataset.v);});
   $('#libtabs').addEventListener('click',e=>{const b=e.target.closest('button[data-t]');if(!b)return;$$('#libtabs button').forEach(x=>x.classList.toggle('on',x===b));$$('.libpane').forEach(p=>p.style.display='none');$('#lib-'+b.dataset.t).style.display='block';if(b.dataset.t==='refs'){if(cloudOn()&&!state.prodLoaded)loadProducts();else libGrid('refs');}});
   $$('.drop[data-store]').forEach(d=>{d.addEventListener('click',()=>{uploadStore=d.dataset.store;$('#hidden-file').click();});d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('hot');});d.addEventListener('dragleave',()=>d.classList.remove('hot'));d.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('hot');handleFiles(e.dataTransfer.files,d.dataset.store);});});
@@ -2276,6 +2314,11 @@ function wire(){
     const wc=e.target.closest('[data-wctag]');if(wc){const t=wc.dataset.wctag;state.tagFilter=(state.tagFilter===t)?'':t;libGrid('refs');return;}
     const rv=e.target.closest('[data-refview]');if(rv){setRefView(rv.dataset.refview);return;}
     const ac=e.target.closest('#ref-autoclass');if(ac){classifyRefsTags(state.refs.filter(r=>!r.shoeType||!r.lifestyle));return;}
+    if(e.target.id==='model-toggle'){const mb=$('#model-body'),open=mb.style.display!=='none';mb.style.display=open?'none':'';e.target.textContent=open?'— 펼치기 (신발은 선택 불필요)':'— 접기';return;}
+    const mga=e.target.closest('[data-mxgadd]');if(mga){const key=mga.dataset.mxgadd;const nm=prompt('새 열(그룹) 이름');if(!nm||!nm.trim())return;(state.mxGroups[key]=state.mxGroups[key]||[]).push({id:uid(),name:nm.trim(),ids:[]});saveMxGroups();renderRefMatrix();return;}
+    const mgr=e.target.closest('[data-mxgren],[data-mxgname]');if(mgr){const gid=mgr.dataset.mxgren||mgr.dataset.mxgname;const key=state.mxSel.st+'|'+state.mxSel.lf;const g=(state.mxGroups[key]||[]).find(x=>x.id===gid);if(!g)return;const nm=prompt('열 이름 변경',g.name);if(!nm||!nm.trim())return;g.name=nm.trim();saveMxGroups();renderRefMatrix();return;}
+    const mgd=e.target.closest('[data-mxgdel]');if(mgd){const gid=mgd.dataset.mxgdel;const key=state.mxSel.st+'|'+state.mxSel.lf;if(!confirm('이 열을 삭제할까요? (사진은 미분류로 돌아갑니다)'))return;state.mxGroups[key]=(state.mxGroups[key]||[]).filter(x=>x.id!==gid);saveMxGroups();renderRefMatrix();return;}
+    const mxe=e.target.closest('[data-mxexpand]');if(mxe){state.mxExpand=!state.mxExpand;renderRefMatrix();return;}
     const mxc=e.target.closest('[data-mxclose]');if(mxc){state.mxSel=null;renderRefMatrix();return;}
     const mo=e.target.closest('[data-mxopen]');if(mo){openMeta('refs',mo.dataset.mxopen);return;}
     const mc=e.target.closest('td[data-mxst]');if(mc){const st=mc.dataset.mxst,lf=mc.dataset.mxlf;state.mxSel=(state.mxSel&&state.mxSel.st===st&&state.mxSel.lf===lf)?null:{st,lf};renderRefMatrix();return;}
@@ -2338,8 +2381,9 @@ async function boot(){
   }catch(e){}
   try{
     let gl=false;
-    if(cloudOn()){try{const gr=await supaSelect('groups');const main=gr.find(x=>x.id==='main')||gr[0];if(main&&Array.isArray(main.groups)){state.groups=main.groups;gl=true;}}catch(e){}}
+    if(cloudOn()){try{const gr=await supaSelect('groups');const main=gr.find(x=>x.id==='main')||gr[0];if(main&&Array.isArray(main.groups)){state.groups=main.groups;gl=true;}const mxm=gr.find(x=>x.id==='mxmain');if(mxm&&mxm.mxGroups&&typeof mxm.mxGroups==='object')state.mxGroups=mxm.mxGroups;}catch(e){}}
     if(!gl)loadGroupsLocal();
+    if(!state.mxGroups||!Object.keys(state.mxGroups).length)loadMxGroupsLocal();
   }catch(e){}
   fillSeasonSelects();wire();applyCategory(true);renderAll();loadSettingsUI();updateKeyDot();refreshJSON(true);
   if(cloudOn())loadProducts();
