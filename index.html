@@ -195,9 +195,9 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .mxg-colhead .sp{flex:1}
 .mxg-colhead button{border:none;background:none;cursor:pointer;color:var(--ink-45);font-size:13px;padding:0 2px}
 .mxg-colhead button:hover{color:var(--pine)}
-.mxg-drop{display:flex;flex-wrap:wrap;gap:10px;min-height:96px}
-.mxg-card{position:relative;width:88px;cursor:grab}
-.mxg-card .th{display:block;width:88px;height:88px;border-radius:10px;background:var(--line-2) center/cover no-repeat;border:1px solid var(--line)}
+.mxg-drop{display:flex;flex-wrap:wrap;gap:10px;min-height:110px}
+.mxg-card{position:relative;width:104px;cursor:grab}
+.mxg-card .th{display:block;width:104px;height:104px;border-radius:10px;background:#f6f4ef center/contain no-repeat;border:1px solid var(--line)}
 .mxg-card.trend .th{outline:2px solid #c0392b;outline-offset:-2px}
 .mxg-card.dragging{opacity:.4}
 .mxg-addcol{flex:0 0 auto;align-self:center;border:1px dashed var(--sand);background:none;border-radius:10px;padding:12px 14px;cursor:pointer;color:var(--ink-45);font-size:13px}
@@ -2233,7 +2233,8 @@ async function exportDataset(){const rows=state.gallery.filter(g=>g.designJSON).
 async function importAll(file){const data=JSON.parse(await file.text());for(const store of['lines','refs','models','fabrics','gallery']){if(Array.isArray(data[store]))for(const it of data[store]){state[store].push(it);await storePut(store,it);}}if(data.settings){Object.assign(state.settings,data.settings);state.settings.id='main';await putOf('settings',state.settings);}renderAll();loadSettingsUI();toast('가져오기 완료');}
 
 /* ---------- wiring ---------- */
-function switchView(v){state.view=v;$$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));$$('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));if(v==='gen')renderPicks();if(v==='gallery')galleryGrid();if(v==='compare')compareSelect();if(v==='settings')loadSettingsUI();}
+function syncModelCollapse(){const shoe=$('#cat-parent')&&$('#cat-parent').value==='SHOES';const mbody=$('#model-body'),mtog=$('#model-toggle');if(mbody&&mtog){if(shoe){mbody.style.display='none';mtog.style.display='';mtog.textContent='— 펼치기 (신발은 선택 불필요)';}else{mbody.style.display='';mtog.style.display='none';}}}
+function switchView(v){state.view=v;$$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));$$('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));if(v==='gen'){renderPicks();syncModelCollapse();}if(v==='gallery')galleryGrid();if(v==='compare')compareSelect();if(v==='settings')loadSettingsUI();}
 function renderAll(){['lines','refs','models','fabrics'].forEach(libGrid);refreshCounts();renderPicks();renderPills();galleryGrid();compareSelect();}
 function fillSeasonSelects(){$('#season').innerHTML=SEASONS.map(s=>`<option ${s==='27FW'?'selected':''}>${s}</option>`).join('');}
 
