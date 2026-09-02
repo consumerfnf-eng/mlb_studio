@@ -1710,12 +1710,9 @@ function renderRefMatrix(){
       const gkey=st+'|'+lf, gps=mxCellGroups(gkey);
       const thumb=it=>`<span class="mxthumb" style="background-image:url('${it.dataUrl}')"></span>`;
       let thumbs;
-      if(gps.length){ // 2차 그룹이 있으면 그룹별 줄로
-        const gset=new Set(gps.flatMap(g=>g.ids));
+      if(gps.length){ // 2차 그룹이 있으면 그룹별 줄로 (미분류는 셀 썸네일에 표시 안 함)
         const rowsH=gps.map(g=>{const gi=items.filter(it=>g.ids.includes(it.id));return gi.length?`<div class="mxrow"><span class="mxrl">${esc(g.name)}</span>${gi.slice(0,3).map(thumb).join('')}</div>`:'';}).filter(Boolean);
-        const ung=items.filter(it=>!gset.has(it.id));
-        if(ung.length)rowsH.push(`<div class="mxrow"><span class="mxrl" style="color:var(--ink-45)">미분류</span>${ung.slice(0,3).map(thumb).join('')}</div>`);
-        thumbs=`<div class="cellrows">${rowsH.join('')}</div>`;
+        thumbs=rowsH.length?`<div class="cellrows">${rowsH.join('')}</div>`:items.slice(0,3).map(thumb).join('');
       }else{thumbs=items.slice(0,3).map(thumb).join('');}
       const fire=tn?`<span class="fire">🔥${tn}</span>`:'';
       return`<td class="${hot} ${tc}" data-mxst="${st}" data-mxlf="${lf}" style="${heat(n)}">${fire}<div class="cellwrap"><span class="cellcnt" style="${darkTxt(n)}">${n}</span>${thumbs}</div></td>`;
