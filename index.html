@@ -1295,11 +1295,14 @@ function productAsRef(p){
 }
 function allRefs(){return state.refs.concat((state.products||[]).map(productAsRef));}
 /* ---------- TREND GROUP ---------- */
-function saveGroups(){
+async function saveGroups(manual){
   const doc={groups:state.groups,updatedAt:Date.now()};
   try{localStorage.setItem('mlb_groups',JSON.stringify(doc));}catch(e){}
   try{putOf('groups',{id:'main',...doc});}catch(e){}
-  if(cloudOn()){supaPutRow('groups',{id:'main',data:{id:'main',...doc}}).catch(()=>{});}
+  if(cloudOn()){
+    if(manual){try{await supaPutRow('groups',{id:'main',data:{id:'main',...doc}});toast('그룹 저장됨 (클라우드)');}catch(e){toast('⚠ 클라우드 저장 실패 — 로컬엔 저장됨');}}
+    else{supaPutRow('groups',{id:'main',data:{id:'main',...doc}}).catch(()=>{});}
+  }else if(manual)toast('그룹 저장됨 (로컬)');
 }
 function loadGroupsLocal(){try{const d=JSON.parse(localStorage.getItem('mlb_groups')||'null');if(d&&Array.isArray(d.groups))state.groups=d.groups;}catch(e){}}
 function saveMxGroups(){try{localStorage.setItem('mlb_mxgroups',JSON.stringify(state.mxGroups));}catch(e){}if(cloudOn()){supaPutRow('groups',{id:'mxmain',data:{id:'mxmain',mxGroups:state.mxGroups}}).catch(()=>{});}}
@@ -1341,8 +1344,9 @@ function renderGroups(){
   const box=$('#group-list');if(!box)return;
   const cat=state.prodFilter.cat;
   const groups=state.groups.filter(g=>!cat||groupCat(g)===cat); // 선택 카테고리 그룹만
-  if(!groups.length){box.innerHTML=`<div class="empty">${cat?cat+' ':''}그룹이 아직 없습니다. PRODUCT 탭에서 선택모드로 여러 개 고른 뒤 "그룹으로 묶기"를 누르세요.</div>`;return;}
-  box.innerHTML=groups.slice().sort((a,b)=>b.createdAt-a.createdAt).map(g=>{
+  const saveBar=`<div class="row" style="justify-content:flex-end;margin-bottom:10px"><button class="btn sm" id="grp-savebtn">💾 그룹 저장</button></div>`;
+  if(!groups.length){box.innerHTML=saveBar+`<div class="empty">${cat?cat+' ':''}그룹이 아직 없습니다. PRODUCT 탭에서 선택모드로 여러 개 고른 뒤 "그룹으로 묶기"를 누르세요.</div>`;return;}
+  box.innerHTML=saveBar+groups.slice().sort((a,b)=>b.createdAt-a.createdAt).map(g=>{
     const items=g.ids.map(refById).filter(Boolean);
     const cardHTML=(it,hidden)=>`<div class="card ro grpcard${hidden?' grphidden':''}" data-ro="1"><button class="x" data-grpdel="${g.id}" data-gitem="${it.id}" title="그룹에서 빼기">✕</button><img class="pthumb" loading="lazy" src="${esc(it.dataUrl||'')}" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name||'')}</div></div></div>`;
     const cards=items.map((it,i)=>cardHTML(it,i>=7)).join('');
@@ -1659,6 +1663,7 @@ async function classifyRefsTags(items){
   toast('레퍼런스 자동분류 완료');
 }
 const LIFE_SHORT={'wellness':'WELLNESS','sportive&old money':'OLD MONEY & SPORTIVE','street':'STREET','daily':'DAILY','outdoor':'OUTDOOR','street&sportive':'STREET'};
+function allHashtags(){const m=new Map();allRefs().forEach(r=>(r.hashtags||[]).forEach(t=>{const k=t.trim();if(k)m.set(k,(m.get(k)||0)+1);}));return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);}
 function normTags(str){return (str||'').split(/[,\n]/).map(s=>s.replace(/^#/,'').trim()).filter(Boolean);}
 function tagCounts(){const m=new Map();const cat=state.prodFilter.cat;allRefs().forEach(r=>{if(state.wcSeason&&r.season!==state.wcSeason)return;if(cat){const g=r._product?'SHOES':(r.gcat||'');if(g!==cat)return;}(r.hashtags||[]).forEach(t=>{const k=t.toLowerCase();m.set(k,(m.get(k)||0)+1);});});return m;}
 function refScore(r,counts){const hs=r.hashtags||[];if(!hs.length)return 0;return Math.max(...hs.map(t=>counts.get(t.toLowerCase())||0));}
@@ -1999,11 +2004,12 @@ function openMeta(store,id){
     <div style="flex:1"><label class="fld">카테고리</label><select id="me-gcat" class="inp"><option value=""></option>${GCAT_OPTS.map(x=>`<option ${it.gcat===x?'selected':''}>${x}</option>`).join('')}</select></div>
     <div style="flex:1"><label class="fld">시즌</label><select id="me-season" class="inp"><option value=""></option>${SEASONS.map(s=>`<option ${it.season===s?'selected':''}>${s}</option>`).join('')}</select></div></div>`;
   if(store==='lines')f+=clsFields+`<div class="row" style="margin-top:12px"><div style="flex:1"><label class="fld">세부(자유)</label><input id="me-cat" class="inp" value="${esc(it.category||'')}" placeholder="경량/Short/Long"></div><div style="flex:1"><label class="fld">라이프스타일</label><select id="me-life" class="inp"><option value=""></option>${['URBAN','ACTIVE WELLNESS','APRES-SKI'].map(x=>`<option ${it.lifestyle===x?'selected':''}>${x}</option>`).join('')}</select></div></div><div class="row" style="margin-top:12px"><div style="flex:2"><label class="fld">랭킹 표기 (해시태그와 별도로 카드에 표시)</label><input id="me-rank" class="inp" value="${esc(it.rank||'')}" placeholder="예: 무신사 Rank #1"></div><div style="flex:1"><label class="fld">날짜 월·연 (비우면 업로드월)</label><input id="me-rankdate" class="inp" value="${esc(it.rankDate||'')}" placeholder="Jan '26 = 2026년 1월"></div></div><label class="fld" style="margin-top:12px">판매 매칭명 (선택 — 판매 랭킹이 안 잡힐 때 상품명 입력)</label><input id="me-salename" class="inp" value="${esc(it.saleName||'')}" placeholder="예: 빅볼청키 마스크 / 브리즈 러너">`;
-  if(store==='refs')f+=clsFields+`<div class="row" style="margin-top:12px"><div style="flex:1"><label class="fld">슈즈타입</label><select id="me-shoetype" class="inp"><option value="">—</option>${SHOE_TYPES.map(x=>`<option ${it.shoeType===x?'selected':''}>${x}</option>`).join('')}</select></div><div style="flex:1"><label class="fld">라이프스타일</label><select id="me-reflife" class="inp"><option value="">—</option>${LIFE_SHOES.map(x=>`<option ${it.lifestyle===x?'selected':''} value="${x}">${LIFE_SHORT[x]}</option>`).join('')}</select></div></div><label class="row" style="font-size:12px;color:#c0392b;gap:6px;margin-top:12px;font-weight:600"><input type="checkbox" id="me-trend" ${it.trend?'checked':''}> 트렌드 아이템 (빨간 테두리)</label><label class="fld" style="margin-top:10px">해시태그 (쉼표 또는 #로 구분)</label><input id="me-hashtags" class="inp" value="${esc((it.hashtags||[]).map(t=>'#'+t).join(' '))}" placeholder="#발레코어 #메쉬 #버건디"><label class="fld" style="margin-top:12px">태그 (쉼표)</label><input id="me-tags" class="inp" value="${esc((it.tags||[]).join(', '))}" placeholder="숄카라, 다이아퀼팅, 와이드…"><div class="row" style="margin-top:12px"><div style="flex:2"><label class="fld">랭킹 표기 (해시태그와 별도로 카드에 표시)</label><input id="me-rank" class="inp" value="${esc(it.rank||'')}" placeholder="예: 무신사 Rank #1"></div><div style="flex:1"><label class="fld">날짜 월·연 (비우면 업로드월)</label><input id="me-rankdate" class="inp" value="${esc(it.rankDate||'')}" placeholder="Jan '26 = 2026년 1월"></div></div><label class="row" style="font-size:12px;color:var(--ink-70);gap:6px;margin-top:12px"><input type="checkbox" id="me-detail" ${it.detail?'checked':''}> 디테일(하드웨어) 레퍼런스 — 벨트·스트링·지퍼풀러 등, 전체 실루엣이 아니라 이 디테일만 채용</label>`;
+  if(store==='refs')f+=clsFields+`<div class="row" style="margin-top:12px"><div style="flex:1"><label class="fld">슈즈타입</label><select id="me-shoetype" class="inp"><option value="">—</option>${SHOE_TYPES.map(x=>`<option ${it.shoeType===x?'selected':''}>${x}</option>`).join('')}</select></div><div style="flex:1"><label class="fld">라이프스타일</label><select id="me-reflife" class="inp"><option value="">—</option>${LIFE_SHOES.map(x=>`<option ${it.lifestyle===x?'selected':''} value="${x}">${LIFE_SHORT[x]}</option>`).join('')}</select></div></div><label class="row" style="font-size:12px;color:#c0392b;gap:6px;margin-top:12px;font-weight:600"><input type="checkbox" id="me-trend" ${it.trend?'checked':''}> 트렌드 아이템 (빨간 테두리)</label><label class="fld" style="margin-top:10px">해시태그 (쉼표 또는 #로 구분)</label><input id="me-hashtags" class="inp" value="${esc((it.hashtags||[]).map(t=>'#'+t).join(' '))}" placeholder="#발레코어 #메쉬 #버건디"><div id="me-htag-sug" class="htag-sug" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px"></div><label class="fld" style="margin-top:12px">태그 (쉼표)</label><input id="me-tags" class="inp" value="${esc((it.tags||[]).join(', '))}" placeholder="숄카라, 다이아퀼팅, 와이드…"><div class="row" style="margin-top:12px"><div style="flex:2"><label class="fld">랭킹 표기 (해시태그와 별도로 카드에 표시)</label><input id="me-rank" class="inp" value="${esc(it.rank||'')}" placeholder="예: 무신사 Rank #1"></div><div style="flex:1"><label class="fld">날짜 월·연 (비우면 업로드월)</label><input id="me-rankdate" class="inp" value="${esc(it.rankDate||'')}" placeholder="Jan '26 = 2026년 1월"></div></div><label class="row" style="font-size:12px;color:var(--ink-70);gap:6px;margin-top:12px"><input type="checkbox" id="me-detail" ${it.detail?'checked':''}> 디테일(하드웨어) 레퍼런스 — 벨트·스트링·지퍼풀러 등, 전체 실루엣이 아니라 이 디테일만 채용</label>`;
   if(store==='fabrics')f+=`<label class="fld" style="margin-top:12px">원단 타입</label><input id="me-ftype" class="inp" value="${esc(it.ftype||'')}" placeholder="glossy nylon / taffeta…">`;
   $('#m-body').innerHTML=`<div class="editgrid"><div><div class="preview zoomable" data-zoom="${esc(it.dataUrl||'')}"><img src="${it.dataUrl}"></div></div><div>${f}<div class="row" style="margin-top:16px;gap:8px"><button class="btn primary sm" id="me-save">저장</button><button class="btn sm" id="me-del" style="color:#c0392b;border-color:#e6b7b0">삭제</button></div></div></div>`;
   $('#me-del').onclick=async()=>{if(!confirm('이 항목을 삭제할까요? 되돌릴 수 없습니다.'))return;const ok=await storeDel(store,it.id);state[store]=state[store].filter(x=>x.id!==it.id);libGrid(store);refreshCounts();renderPicks();if(store==='refs'&&state.refView==='matrix')renderRefMatrix();$('#modal').classList.remove('on');toast(ok?'삭제됨':'⚠ 화면에선 지웠지만 클라우드 삭제 실패 — 새로고침 시 다시 나타날 수 있어요');};
   $('#me-save').onclick=async()=>{it.name=$('#me-name').value.trim()||it.name;if(store==='lines'||store==='refs'){it.gender=$('#me-gender').value;it.gcat=$('#me-gcat').value;it.season=$('#me-season').value;if($('#me-rank'))it.rank=$('#me-rank').value.trim();if($('#me-rankdate'))it.rankDate=$('#me-rankdate').value.trim();}if(store==='lines'){it.category=$('#me-cat').value.trim();it.lifestyle=$('#me-life').value;if($('#me-salename'))it.saleName=$('#me-salename').value.trim();}if(store==='refs'){it.tags=$('#me-tags').value.split(',').map(s=>s.trim()).filter(Boolean);it.detail=$('#me-detail').checked;it.shoeType=$('#me-shoetype').value;it.lifestyle=$('#me-reflife').value;const wasTrend=it.trend;it.trend=$('#me-trend').checked;if(it.trend&&!wasTrend)it.trendAt=Date.now();if(!it.trend)it.trendAt=0;it.hashtags=normTags($('#me-hashtags').value.replace(/#/g,',').replace(/\s+/g,','));}if(store==='fabrics')it.ftype=$('#me-ftype').value.trim();await storePut(store,it);libGrid(store);if(store==='refs'&&state.refView==='matrix')renderRefMatrix();renderPicks();$('#modal').classList.remove('on');toast('저장됨');};
+  if(store==='refs'){const sug=$('#me-htag-sug'),inp=$('#me-hashtags');if(sug&&inp){const all=allHashtags().slice(0,24);const render=()=>{const cur=new Set(normTags(inp.value).map(t=>t.toLowerCase()));sug.innerHTML=all.filter(t=>!cur.has(t.toLowerCase())).slice(0,18).map(t=>`<button type="button" class="htag-chip" data-htag="${esc(t)}" style="border:1px solid var(--line);background:var(--white);border-radius:12px;padding:2px 9px;font-size:12px;cursor:pointer;color:var(--ink-70)">#${esc(t)}</button>`).join('')||'<span class="hint" style="margin:0">추천할 기존 키워드가 없어요</span>';};render();sug.onclick=e=>{const c=e.target.closest('[data-htag]');if(!c)return;const v=inp.value.trim();inp.value=(v?v+' ':'')+'#'+c.dataset.htag+' ';render();inp.focus();};inp.addEventListener('input',render);}}
   $('#modal').classList.add('on');
 }
 
@@ -2304,6 +2310,7 @@ function wire(){
     const sall=e.target.closest('[data-selall]');if(sall){const st=sall.dataset.selall;if(st==='refs'){state.refs.filter(uploadMatch).forEach(it=>state.libSel.refs.add(it.id));(state.products||[]).filter(prodMatch).forEach(p=>state.libSel.refs.add('prod_'+p.id));}else{state[st].filter(it=>matchFilter(st,it)).forEach(it=>state.libSel[st].add(it.id));}libGrid(st);return;}
     const sclr=e.target.closest('[data-selclear]');if(sclr){const st=sclr.dataset.selclear;state.libSel[st].clear();libGrid(st);return;}
     const sap=e.target.closest('[data-selapply]');if(sap){await bulkApply(sap.dataset.selapply);return;}
+    if(e.target.id==='grp-savebtn'){saveGroups(true);return;}
     const rcat=e.target.closest('[data-refcat]');if(rcat){state.prodFilter.cat=rcat.dataset.refcat;state.prodShowAll=false;renderRefCatChips();renderWordCloud();if(state.refView==='group')renderGroups();else if(state.refView==='matrix')renderRefMatrix();else renderProducts();return;}
     const sgrp=e.target.closest('[data-selgroup]');if(sgrp){const ids=[...state.libSel.refs];if(!ids.length){toast('먼저 항목을 선택하세요.');return;}pickGroupName(nm=>{assignToGroup(nm,ids);state.libSel.refs.clear();state.libSelMode.refs=false;toast(`"${nm}" 그룹에 ${ids.length}개 추가됨`);setRefView('group');});return;}
     const gmore=e.target.closest('[data-grpmorebtn]');if(gmore){const sec=document.querySelector('.grpsec[data-grpsec="'+gmore.dataset.grpmorebtn+'"]');if(sec){sec.querySelectorAll('.grphidden').forEach(el=>el.classList.remove('grphidden'));gmore.style.display='none';}return;}
@@ -2392,9 +2399,16 @@ async function boot(){
     if(!loaded){try{const v=await allOf('sales');const main=(v||[]).find(x=>x.id==='main')||(v||[])[0];if(main){state.salesRows=main.rows||[];state.salesRaw=main.raw||'';}}catch(e){}}
   }catch(e){}
   try{
-    let gl=false;
-    if(cloudOn()){try{const gr=await supaSelect('groups');const main=gr.find(x=>x.id==='main')||gr[0];if(main&&Array.isArray(main.groups)){state.groups=main.groups;gl=true;}const mxm=gr.find(x=>x.id==='mxmain');if(mxm&&mxm.mxGroups&&typeof mxm.mxGroups==='object')state.mxGroups=mxm.mxGroups;}catch(e){}}
-    if(!gl)loadGroupsLocal();
+    let cloudMain=null,cloudMx=null;
+    if(cloudOn()){try{const gr=await supaSelect('groups');const main=gr.find(x=>x.id==='main');if(main&&Array.isArray(main.groups))cloudMain=main;const mxm=gr.find(x=>x.id==='mxmain');if(mxm&&mxm.mxGroups&&typeof mxm.mxGroups==='object')cloudMx=mxm;}catch(e){}}
+    let localMain=null;try{localMain=JSON.parse(localStorage.getItem('mlb_groups')||'null');}catch(e){}
+    // 로컬·클라우드 중 최신(updatedAt) 우선 — 클라우드 저장 누락 시 새 그룹이 사라지지 않게
+    const cu=(cloudMain&&cloudMain.updatedAt)||0, lu=(localMain&&localMain.updatedAt)||0;
+    if(cloudMain&&(cu>=lu||!localMain))state.groups=cloudMain.groups;
+    else if(localMain&&Array.isArray(localMain.groups))state.groups=localMain.groups;
+    else if(cloudMain)state.groups=cloudMain.groups;
+    // mxGroups: 클라우드 우선, 없으면 로컬
+    if(cloudMx&&cloudMx.mxGroups)state.mxGroups=cloudMx.mxGroups;
     if(!state.mxGroups||!Object.keys(state.mxGroups).length)loadMxGroupsLocal();
   }catch(e){}
   fillSeasonSelects();wire();applyCategory(true);renderAll();loadSettingsUI();updateKeyDot();refreshJSON(true);
