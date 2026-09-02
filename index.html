@@ -805,7 +805,7 @@ const state={
   aiAttrs:{}, jsonDirty:false, galCat:'all', galFilter:'all', galLife:'all',
   libFilter:{lines:{gender:'ALL',gcat:'ALL',season:'ALL',shoetype:'ALL'},refs:{gender:'ALL',gcat:'ALL',season:'ALL'}},
   pu:{lines:{gender:'',gcat:'',season:''},refs:{gender:'',gcat:'',season:''},models:{gender:'',gcat:'',season:''},fabrics:{gender:'',gcat:'',season:''}},
-  libSelMode:{lines:false,refs:false}, libSel:{lines:new Set(),refs:new Set()}, refView:'product', mxSel:null, mxExpand:false, mxGroups:{}, tagFilter:'', refTrendUpload:false, wcSeason:'', groups:[], groupFilter:'', prodShowAll:false,
+  libSelMode:{lines:false,refs:false}, libSel:{lines:new Set(),refs:new Set()}, refView:'product', mxSel:null, mxExpand:false, mxGroups:{}, grpExpanded:new Set(), tagFilter:'', refTrendUpload:false, wcSeason:'', groups:[], groupFilter:'', prodShowAll:false,
   products:[], prodLoaded:false, prodFilter:{season:'',brand:'',gender:'',fabric:'',search:'',cat:''},
   salesRows:[], salesRaw:''
 };
@@ -1348,10 +1348,11 @@ function renderGroups(){
   if(!groups.length){box.innerHTML=saveBar+`<div class="empty">${cat?cat+' ':''}그룹이 아직 없습니다. PRODUCT 탭에서 선택모드로 여러 개 고른 뒤 "그룹으로 묶기"를 누르세요.</div>`;return;}
   box.innerHTML=saveBar+groups.slice().sort((a,b)=>b.createdAt-a.createdAt).map(g=>{
     const items=g.ids.map(refById).filter(Boolean);
+    const expanded=state.grpExpanded.has(g.id);
     const cardHTML=(it,hidden)=>`<div class="card ro grpcard${hidden?' grphidden':''}" data-ro="1"><button class="x" data-grpdel="${g.id}" data-gitem="${it.id}" title="그룹에서 빼기">✕</button><img class="pthumb" loading="lazy" src="${esc(it.dataUrl||'')}" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name||'')}</div></div></div>`;
-    const cards=items.map((it,i)=>cardHTML(it,i>=7)).join('');
+    const cards=items.map((it,i)=>cardHTML(it,!expanded&&i>=7)).join('');
     const restN=Math.max(0,items.length-7);
-    const more=restN?`<button class="btn xs grpmore-btn" data-grpmorebtn="${g.id}" style="margin-top:8px">＋ 더보기 (${restN})</button>`:'';
+    const more=(restN&&!expanded)?`<button class="btn xs grpmore-btn" data-grpmorebtn="${g.id}" style="margin-top:8px">＋ 더보기 (${restN})</button>`:'';
     return`<div class="grpsec" data-grpsec="${g.id}"><div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px"><div class="gtitle" style="color:#c0392b">🔥 ${esc(g.name)} <span class="k">(${items.length})</span></div><div class="row" style="gap:6px"><button class="btn xs" data-grpadd="${g.id}">＋ 사진 추가</button><button class="btn xs" data-grprename="${g.id}">이름변경</button><button class="btn xs" data-grpremove="${g.id}" style="color:#c0392b">그룹삭제</button></div></div><div class="cards lg grpgrid">${cards||'<div class=hint>빈 그룹</div>'}</div>${more}</div>`;
   }).join('');
 }
@@ -1683,6 +1684,7 @@ function renderWordCloud(){
 }
 function setRefView(v){
   if(v!=='matrix'&&v!=='group')v='product';
+  if(v!=='group')state.grpExpanded.clear();
   state.refView=v;
   renderRefCatChips();
   $$('#ref-view-seg .segbtn').forEach(b=>b.classList.toggle('on',b.dataset.refview===v));
@@ -2249,7 +2251,7 @@ async function importAll(file){const data=JSON.parse(await file.text());for(cons
 
 /* ---------- wiring ---------- */
 function syncModelCollapse(){const shoe=$('#cat-parent')&&$('#cat-parent').value==='SHOES';const mbody=$('#model-body'),mtog=$('#model-toggle');if(mbody&&mtog){if(shoe){mbody.style.display='none';mtog.style.display='';mtog.textContent='— 펼치기 (신발은 선택 불필요)';}else{mbody.style.display='';mtog.style.display='none';}}}
-function switchView(v){state.view=v;$$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));$$('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));if(v==='gen'){renderPicks();syncModelCollapse();}if(v==='gallery')galleryGrid();if(v==='compare')compareSelect();if(v==='settings')loadSettingsUI();}
+function switchView(v){state.grpExpanded.clear();state.view=v;$$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));$$('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));if(v==='gen'){renderPicks();syncModelCollapse();}if(v==='gallery')galleryGrid();if(v==='compare')compareSelect();if(v==='settings')loadSettingsUI();}
 function renderAll(){['lines','refs','models','fabrics'].forEach(libGrid);refreshCounts();renderPicks();renderPills();galleryGrid();compareSelect();}
 function fillSeasonSelects(){$('#season').innerHTML=SEASONS.map(s=>`<option ${s==='27FW'?'selected':''}>${s}</option>`).join('');}
 
@@ -2313,7 +2315,7 @@ function wire(){
     if(e.target.id==='grp-savebtn'){saveGroups(true);return;}
     const rcat=e.target.closest('[data-refcat]');if(rcat){state.prodFilter.cat=rcat.dataset.refcat;state.prodShowAll=false;renderRefCatChips();renderWordCloud();if(state.refView==='group')renderGroups();else if(state.refView==='matrix')renderRefMatrix();else renderProducts();return;}
     const sgrp=e.target.closest('[data-selgroup]');if(sgrp){const ids=[...state.libSel.refs];if(!ids.length){toast('먼저 항목을 선택하세요.');return;}pickGroupName(nm=>{assignToGroup(nm,ids);state.libSel.refs.clear();state.libSelMode.refs=false;toast(`"${nm}" 그룹에 ${ids.length}개 추가됨`);setRefView('group');});return;}
-    const gmore=e.target.closest('[data-grpmorebtn]');if(gmore){const sec=document.querySelector('.grpsec[data-grpsec="'+gmore.dataset.grpmorebtn+'"]');if(sec){sec.querySelectorAll('.grphidden').forEach(el=>el.classList.remove('grphidden'));gmore.style.display='none';}return;}
+    const gmore=e.target.closest('[data-grpmorebtn]');if(gmore){state.grpExpanded.add(gmore.dataset.grpmorebtn);renderGroups();return;}
     const gadd=e.target.closest('[data-grpadd]');if(gadd){groupUploadTarget=gadd.dataset.grpadd;uploadStore='__group';$('#hidden-file').click();return;}
     const gren=e.target.closest('[data-grprename]');if(gren){const g=state.groups.find(x=>x.id===gren.dataset.grprename);if(!g)return;const nm=prompt('그룹 이름 변경',g.name);if(nm&&nm.trim()){g.name=nm.trim();saveGroups();renderGroups();}return;}
     const grem=e.target.closest('[data-grpremove]');if(grem){const g=state.groups.find(x=>x.id===grem.dataset.grpremove);if(!g)return;if(!confirm(`"${g.name}" 그룹을 삭제할까요? (사진 자체는 지워지지 않아요)`))return;state.groups=state.groups.filter(x=>x.id!==g.id);saveGroups();renderGroups();return;}
