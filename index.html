@@ -177,6 +177,9 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .mx th.rowhead{position:sticky;left:0;z-index:1;min-width:78px;text-align:left}
 .mx td{min-width:120px;height:74px}
 .mx .cellwrap{display:flex;flex-wrap:wrap;gap:4px}
+.mx .cellrows{display:flex;flex-direction:column;gap:4px;width:100%}
+.mx .mxrow{display:flex;align-items:center;gap:4px;flex-wrap:nowrap}
+.mx .mxrl{font-size:9px;color:var(--pine,#33463b);font-weight:700;min-width:30px;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mx .mxthumb{width:52px;height:52px;border-radius:6px;background-size:cover;background-position:center;cursor:pointer;border:1px solid var(--line)}
 .mx .cnt{font-size:10px;color:var(--ink-70);margin-left:4px}
 .mx .none{font-size:11px;color:var(--line)}
@@ -345,7 +348,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
     </div>
     <div id="lib-refs" class="libpane" style="display:none">
       <div class="panel">
-        <div class="drop" data-store="refs"><b>레퍼런스 이미지 올리기</b><br><span style="font-size:12px">채용할 디자인(카라·퀼팅·실루엣·핏) 레퍼런스 · 파일명 <b>성별_카테고리_시즌_이름</b> 이면 자동 분류</span></div>
+        <div class="drop" data-store="refs"><b>레퍼런스 이미지 올리기</b> · 클릭 후 <b>Ctrl+V</b>로 붙여넣기 가능<br><span style="font-size:12px">채용할 디자인(카라·퀼팅·실루엣·핏) 레퍼런스 · 파일명 <b>성별_카테고리_시즌_이름</b> 이면 자동 분류</span></div>
         <label class="row" style="font-size:12px;color:var(--ink-70);gap:6px;margin-top:10px"><input type="checkbox" id="ref-trend-up"> <b style="color:#c0392b">트렌드 아이템으로 추가</b> — 켜고 올리면 빨간 테두리로 표시(해시태그는 카드 클릭해서 입력)</label>
         <div class="bulkbar" data-store="refs"></div>
         <div class="arch-chips" id="ref-cat-chips" style="margin:10px 0 8px"></div>
@@ -1704,7 +1707,16 @@ function renderRefMatrix(){
       const hot=state.mxSel&&state.mxSel.st===st&&state.mxSel.lf===lf?'hot':'';
       const tc=tn?'trendcell':'';
       if(!n)return`<td class="${hot}" data-mxst="${st}" data-mxlf="${lf}"><span class="cellcnt zero">0</span></td>`;
-      const thumbs=items.slice(0,3).map(it=>`<span class="mxthumb" style="background-image:url('${it.dataUrl}')"></span>`).join('');
+      const gkey=st+'|'+lf, gps=mxCellGroups(gkey);
+      const thumb=it=>`<span class="mxthumb" style="background-image:url('${it.dataUrl}')"></span>`;
+      let thumbs;
+      if(gps.length){ // 2차 그룹이 있으면 그룹별 줄로
+        const gset=new Set(gps.flatMap(g=>g.ids));
+        const rowsH=gps.map(g=>{const gi=items.filter(it=>g.ids.includes(it.id));return gi.length?`<div class="mxrow"><span class="mxrl">${esc(g.name)}</span>${gi.slice(0,3).map(thumb).join('')}</div>`:'';}).filter(Boolean);
+        const ung=items.filter(it=>!gset.has(it.id));
+        if(ung.length)rowsH.push(`<div class="mxrow"><span class="mxrl" style="color:var(--ink-45)">미분류</span>${ung.slice(0,3).map(thumb).join('')}</div>`);
+        thumbs=`<div class="cellrows">${rowsH.join('')}</div>`;
+      }else{thumbs=items.slice(0,3).map(thumb).join('');}
       const fire=tn?`<span class="fire">🔥${tn}</span>`:'';
       return`<td class="${hot} ${tc}" data-mxst="${st}" data-mxlf="${lf}" style="${heat(n)}">${fire}<div class="cellwrap"><span class="cellcnt" style="${darkTxt(n)}">${n}</span>${thumbs}</div></td>`;
     }).join('');
@@ -2247,7 +2259,7 @@ function wire(){
   document.addEventListener('drop',e=>{const d=e.target.closest('[data-mxgdrop]');if(!d||!state.mxSel)return;e.preventDefault();const id=mxgDrag||(e.dataTransfer&&e.dataTransfer.getData('text/plain'));if(!id)return;const key=state.mxSel.st+'|'+state.mxSel.lf;const target=d.dataset.mxgdrop;const arr=(state.mxGroups[key]=state.mxGroups[key]||[]);arr.forEach(g=>{g.ids=g.ids.filter(x=>x!==id);});if(target!=='__un'){const g=arr.find(x=>x.id===target);if(g&&!g.ids.includes(id))g.ids.push(id);}saveMxGroups();renderRefMatrix();});
   $('#nav').addEventListener('click',e=>{const b=e.target.closest('button[data-v]');if(b)switchView(b.dataset.v);});
   $('#libtabs').addEventListener('click',e=>{const b=e.target.closest('button[data-t]');if(!b)return;$$('#libtabs button').forEach(x=>x.classList.toggle('on',x===b));$$('.libpane').forEach(p=>p.style.display='none');$('#lib-'+b.dataset.t).style.display='block';if(b.dataset.t==='refs'){if(cloudOn()&&!state.prodLoaded)loadProducts();else libGrid('refs');}});
-  $$('.drop[data-store]').forEach(d=>{d.addEventListener('click',()=>{uploadStore=d.dataset.store;$('#hidden-file').click();});d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('hot');});d.addEventListener('dragleave',()=>d.classList.remove('hot'));d.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('hot');handleFiles(e.dataTransfer.files,d.dataset.store);});});
+  $$('.drop[data-store]').forEach(d=>{d.setAttribute('tabindex','0');d.addEventListener('click',()=>{uploadStore=d.dataset.store;$('#hidden-file').click();});d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('hot');});d.addEventListener('dragleave',()=>d.classList.remove('hot'));d.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('hot');handleFiles(e.dataTransfer.files,d.dataset.store);});d.addEventListener('paste',e=>{const files=[...(e.clipboardData||{}).items||[]].filter(i=>i.type.startsWith('image/')).map(i=>i.getAsFile()).filter(Boolean);if(files.length){e.preventDefault();handleFiles(files,d.dataset.store);}});});
   const capZone=$('#cap-zone');
   if(capZone){
     capZone.addEventListener('click',()=>{uploadStore='__capture';$('#hidden-file').click();});
@@ -2258,6 +2270,8 @@ function wire(){
   }
   // 캡처 존에 포커스 없이 Ctrl+V 해도 잡히도록 문서 레벨 폴백(생성 탭에서만)
   document.addEventListener('paste',e=>{if(state.view!=='gen')return;if(document.activeElement&&/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;const items=[...(e.clipboardData||{}).items||[]];const files=items.filter(i=>i.type.startsWith('image/')).map(i=>i.getAsFile()).filter(Boolean);if(files.length){e.preventDefault();addCaptureFiles(files);}});
+  // 라이브러리 탭에서 Ctrl+V → 현재 열린 서브탭(레퍼런스/라인 등)에 바로 추가
+  document.addEventListener('paste',e=>{if(state.view!=='lib')return;if(document.activeElement&&/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;const files=[...(e.clipboardData||{}).items||[]].filter(i=>i.type.startsWith('image/')).map(i=>i.getAsFile()).filter(Boolean);if(!files.length)return;let store='refs';for(const s of ['refs','lines','models','fabrics']){const p=$('#lib-'+s);if(p&&getComputedStyle(p).display!=='none'){store=s;break;}}e.preventDefault();handleFiles(files,store);});
   $('#drop-logo').addEventListener('click',()=>{uploadStore='__logo';$('#hidden-file').click();});
   $('#drop-team-ny').addEventListener('click',()=>{uploadStore='__teamNY';$('#hidden-file').click();});
   $('#drop-team-la').addEventListener('click',()=>{uploadStore='__teamLA';$('#hidden-file').click();});
