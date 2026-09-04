@@ -536,6 +536,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
       <div class="pillrow" id="gal-life" style="margin-top:6px"></div>
       <div class="row" style="gap:12px"><button class="btn sm" id="btn-gal-upload">＋ 이미지 업로드</button><label class="row" style="font-size:12px;color:var(--ink-70);gap:6px"><input type="checkbox" id="showlogo" checked> 로고 표시</label></div>
     </div>
+    <div class="row" id="gal-selbar" style="gap:8px;align-items:center;margin-bottom:10px"></div>
     <div class="drop" id="gal-drop" style="margin-bottom:14px;padding:16px"><b>여기로 이미지를 끌어다 놓아 갤러리에 바로 추가</b><br><span style="font-size:12px">생성 없이 완성 이미지를 올릴 수 있어요 · 파일명 <b>성별_카테고리_시즌_이름</b> 이면 자동 분류</span></div>
     <div id="grid-gallery" class="cards lg"></div>
   </section>
@@ -805,8 +806,8 @@ const state={
   aiAttrs:{}, jsonDirty:false, galCat:'all', galFilter:'all', galLife:'all',
   libFilter:{lines:{gender:'ALL',gcat:'ALL',season:'ALL',shoetype:'ALL'},refs:{gender:'ALL',gcat:'ALL',season:'ALL'}},
   pu:{lines:{gender:'',gcat:'',season:''},refs:{gender:'',gcat:'',season:''},models:{gender:'',gcat:'',season:''},fabrics:{gender:'',gcat:'',season:''}},
-  libSelMode:{lines:false,refs:false}, libSel:{lines:new Set(),refs:new Set()}, refView:'product', mxSel:null, mxExpand:false, mxGroups:{}, grpExpanded:new Set(), tagFilter:'', refTrendUpload:false, wcSeason:'', groups:[], groupFilter:'', prodShowAll:false,
-  products:[], prodLoaded:false, prodFilter:{season:'',brand:'',gender:'',fabric:'',search:'',cat:''},
+  libSelMode:{lines:false,refs:false}, libSel:{lines:new Set(),refs:new Set()}, galSelMode:false, galSel:new Set(), refView:'product', mxSel:null, mxExpand:false, mxGroups:{}, grpExpanded:new Set(), tagFilter:'', refTrendUpload:false, wcSeason:'', groups:[], groupFilter:'', prodShowAll:false,
+  products:[], prodLoaded:false, prodFilter:{season:'',brand:'',gender:'',fabric:'',search:'',cat:'',secret:false},
   salesRows:[], salesRaw:''
 };
 
@@ -1412,6 +1413,7 @@ function buildProdFilters(){
 }
 function prodMatch(p){
   const f=state.prodFilter;
+  if(f.secret)return false; // 시크릿 저장소엔 공용 상품 표시 안 함
   if(f.cat&&f.cat!=='SHOES')return false; // 상품 카탈로그는 슈즈이므로 다른 카테고리 선택 시 숨김
   if(f.unclass&&p.shoe_type&&p.lifestyle)return false;
   if(f.season&&p.season!==f.season)return false;
@@ -1424,6 +1426,8 @@ function prodMatch(p){
 }
 function uploadMatch(r){
   const f=state.prodFilter;
+  if(f.secret){ if(!r.secret||(r.owner||'').toLowerCase()!==authEmail)return false; }
+  else if(r.secret)return false; // 일반 뷰에선 시크릿 숨김
   if(f.brand||f.fabric)return false; // 상품 전용 필터가 걸리면 내 레퍼런스는 숨김
   if(f.cat&&(r.gcat||'')!==f.cat)return false; // 카테고리 필터
   if(f.unclass&&r.shoeType&&r.lifestyle)return false;
@@ -1437,7 +1441,9 @@ function renderRefCatChips(){
   const el=$('#ref-cat-chips');if(!el)return;
   const cur=state.prodFilter.cat||'';
   const chip=(v,label)=>`<button class="chip ${cur===v?'on':''}" data-refcat="${v}" style="${cur===v?'background:var(--pine);color:#fff;border-color:var(--pine)':''}">${label}</button>`;
-  el.innerHTML=`<span class="chiplabel" style="margin-right:4px">카테고리</span>`+chip('','전체')+GCAT_OPTS.map(c=>chip(c,c)).join('');
+  const sec=state.prodFilter.secret;
+  const secBtn=canSecret()?`<span style="margin:0 6px;color:var(--line)">|</span><button class="chip ${sec?'on':''}" data-refsecret="1" style="${sec?'background:#8a6d3b;color:#fff;border-color:#8a6d3b':''}" title="소비자전략팀 전용 · 나만 보임">🔒 소전팀</button>${sec?`<button class="chip" data-refpromote="1" style="border-color:var(--pine);color:var(--pine)" title="선택한 시크릿 레퍼를 팀 공용으로 올리기">📤 공유로 올리기</button>`:''}`:'';
+  el.innerHTML=`<span class="chiplabel" style="margin-right:4px">카테고리</span>`+chip('','전체')+GCAT_OPTS.map(c=>chip(c,c)).join('')+secBtn;
 }
 function renderProducts(){
   const grid=$('#grid-refs');if(!grid)return;
@@ -1508,7 +1514,7 @@ function renderPicks(){
 /* ---------- ARCHIVE BROWSER ---------- */
 function openArchive(store){
   const isLines=store==='lines',multi=store==='refs';
-  let q='',genderF='ALL',gcatF='ALL',tagF='ALL',stF='ALL',trendF=false,groupF='',seasonF=isLines?(prevSeason($('#season').value)||'ALL'):'ALL';
+  let q='',genderF='ALL',gcatF='ALL',tagF='ALL',stF='ALL',trendF=false,secretF=false,groupF='',seasonF=isLines?(prevSeason($('#season').value)||'ALL'):'ALL';
   $('#sheet').classList.add('wide');
   $('#m-title').textContent=isLines?'라인 아카이브':'레퍼런스 아카이브';
   $('#m-body').innerHTML=`
@@ -1533,6 +1539,7 @@ function openArchive(store){
       const tags=Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).slice(0,20); // 상위 20개만
       if(tags.length)h+=grp('tag','태그 (상위 20)',tags,tagF);
       h+=`<div class="chipgroup"><span class="chiplabel">트렌드</span><button class="togglepill ${trendF?'on':''}" data-axis="trend" data-val="toggle" style="${trendF?'background:#c0392b;color:#fff;border-color:#c0392b':''}">🔥 트렌드만</button></div>`;
+      if(canSecret())h+=`<div class="chipgroup"><span class="chiplabel">소전팀</span><button class="togglepill ${secretF?'on':''}" data-axis="secret" data-val="toggle" style="${secretF?'background:#8a6d3b;color:#fff;border-color:#8a6d3b':''}">🔒 소전팀만</button></div>`;
       if(state.groups&&state.groups.length){
         const chips=state.groups.slice().sort((a,b)=>b.createdAt-a.createdAt).map(g=>`<button class="chip ${groupF===g.id?'on':''}" data-axis="group" data-val="${g.id}" style="${groupF===g.id?'background:#c0392b;color:#fff;border-color:#c0392b':'border-color:#c0392b;color:#c0392b'}">🔥 ${esc(g.name)} (${g.ids.length})</button>`).join('');
         h+=`<div class="chipgroup"><span class="chiplabel">TREND GROUP</span>${chips}</div>`;
@@ -1546,6 +1553,7 @@ function openArchive(store){
     if(gcatF!=='ALL')items=items.filter(x=>x.gcat===gcatF);
     if(gcatF==='SHOES'&&stF!=='ALL')items=items.filter(x=>(x.shoeType||'')===stF);
     if(seasonF!=='ALL')items=items.filter(x=>x.season===seasonF);
+    if(!isLines){ if(secretF)items=items.filter(r=>r.secret&&(r.owner||'').toLowerCase()===authEmail); else items=items.filter(r=>!r.secret); }
     if(!isLines&&tagF!=='ALL')items=items.filter(r=>((r.tags||[]).includes(tagF)||(r.hashtags||[]).includes(tagF)));
     if(!isLines&&trendF)items=items.filter(r=>trendActive(r));
     if(!isLines&&groupF){const g=(state.groups||[]).find(x=>x.id===groupF);const set=new Set(g?g.ids:[]);items=items.filter(r=>set.has(r.id));}
@@ -1570,7 +1578,7 @@ function openArchive(store){
   }
   chips();render();
   $('#arch-q').addEventListener('input',e=>{q=e.target.value;render();});
-  chipsEl.addEventListener('click',e=>{const b=e.target.closest('[data-axis]');if(!b)return;const v=b.dataset.val,ax=b.dataset.axis;if(ax==='gender')genderF=v;else if(ax==='gcat'){gcatF=v;if(v!=='SHOES')stF='ALL';}else if(ax==='shoetype')stF=v;else if(ax==='season')seasonF=v;else if(ax==='tag')tagF=v;else if(ax==='trend'){trendF=!trendF;if(trendF)groupF='';}else if(ax==='group'){groupF=(groupF===v)?'':v;if(groupF)trendF=false;}chips();render();});
+  chipsEl.addEventListener('click',e=>{const b=e.target.closest('[data-axis]');if(!b)return;const v=b.dataset.val,ax=b.dataset.axis;if(ax==='gender')genderF=v;else if(ax==='gcat'){gcatF=v;if(v!=='SHOES')stF='ALL';}else if(ax==='shoetype')stF=v;else if(ax==='season')seasonF=v;else if(ax==='tag')tagF=v;else if(ax==='trend'){trendF=!trendF;if(trendF)groupF='';}else if(ax==='secret'){secretF=!secretF;}else if(ax==='group'){groupF=(groupF===v)?'':v;if(groupF)trendF=false;}chips();render();});
   gridEl.addEventListener('click',e=>{
     const bz=e.target.closest('[data-bigzoom]');if(bz){e.stopPropagation();openLightbox(bz.dataset.bigzoom);return;}
     const c=e.target.closest('[data-aid]');if(!c)return;const id=c.dataset.aid;
@@ -1666,7 +1674,7 @@ async function classifyRefsTags(items){
 const LIFE_SHORT={'wellness':'WELLNESS','sportive&old money':'OLD MONEY & SPORTIVE','street':'STREET','daily':'DAILY','outdoor':'OUTDOOR','street&sportive':'STREET'};
 function allHashtags(){const m=new Map();allRefs().forEach(r=>(r.hashtags||[]).forEach(t=>{const k=t.trim();if(k)m.set(k,(m.get(k)||0)+1);}));return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);}
 function normTags(str){return (str||'').split(/[,\n]/).map(s=>s.replace(/^#/,'').trim()).filter(Boolean);}
-function tagCounts(){const m=new Map();const cat=state.prodFilter.cat;allRefs().forEach(r=>{if(state.wcSeason&&r.season!==state.wcSeason)return;if(cat){const g=r._product?'SHOES':(r.gcat||'');if(g!==cat)return;}(r.hashtags||[]).forEach(t=>{const k=t.toLowerCase();m.set(k,(m.get(k)||0)+1);});});return m;}
+function tagCounts(){const m=new Map();const cat=state.prodFilter.cat;allRefs().forEach(r=>{if(r.secret)return;if(state.wcSeason&&r.season!==state.wcSeason)return;if(cat){const g=r._product?'SHOES':(r.gcat||'');if(g!==cat)return;}(r.hashtags||[]).forEach(t=>{const k=t.toLowerCase();m.set(k,(m.get(k)||0)+1);});});return m;}
 function refScore(r,counts){const hs=r.hashtags||[];if(!hs.length)return 0;return Math.max(...hs.map(t=>counts.get(t.toLowerCase())||0));}
 function renderWordCloud(){
   const box=$('#ref-wordcloud');if(!box)return;
@@ -1698,7 +1706,7 @@ function setRefView(v){
 }
 function renderRefMatrix(){
   const box=$('#matrix-refs');if(!box)return;
-  const scope=allRefs().filter(r=>(!state.wcSeason||r.season===state.wcSeason)&&r.gcat==='SHOES'); // 신발 레퍼만(옷 제외)
+  const scope=allRefs().filter(r=>(!state.wcSeason||r.season===state.wcSeason)&&r.gcat==='SHOES'&&!r.secret); // 신발 레퍼만(옷·시크릿 제외)
   const tagged=scope.filter(r=>r.shoeType&&MX_LIFE_ROWS.includes(r.lifestyle)); // OUTDOOR 제외
   const cell=(st,lf)=>tagged.filter(r=>r.shoeType===st&&r.lifestyle===lf);
   const total=tagged.length;
@@ -1803,6 +1811,23 @@ function galCatOf(g){ // 생성물 category.parent 또는 업로드 gcat을 정�
   if(c==='OUTER')c='OUTERWEAR';if(c==='BOTTOM')c='BOTTOMS';
   return c;
 }
+async function shareGallerySelected(){
+  const ids=[...state.galSel];
+  if(!ids.length){toast('공유할 생성물을 먼저 선택하세요');return;}
+  let email=prompt('이 생성물을 보여줄 계정 이메일을 입력하세요 (여러 명은 쉼표로 구분)');
+  if(!email||!email.trim())return;
+  const targets=email.split(/[,\s]+/).map(s=>s.trim().toLowerCase()).filter(Boolean);
+  if(!targets.length)return;
+  const picks=state.gallery.filter(g=>ids.includes(g.id)&&!isSharedToMe(g));
+  for(const g of picks){
+    const sw=new Set((g.sharedWith||[]).map(x=>(x||'').toLowerCase()));
+    targets.forEach(t=>{if(t!==authEmail)sw.add(t);});
+    g.sharedWith=[...sw];
+    await storePut('gallery',g);
+  }
+  state.galSel.clear();state.galSelMode=false;galleryGrid();
+  toast(`${picks.length}장을 ${targets.join(', ')} 계정에 공유했습니다`);
+}
 function galleryGrid(){
   const grid=$('#grid-gallery');let items=state.gallery.slice().sort((a,b)=>b.createdAt-a.createdAt);
   if(state.galCat!=='all')items=items.filter(g=>galCatOf(g)===state.galCat);
@@ -1816,12 +1841,20 @@ function galleryGrid(){
   const lifes=[...new Set(state.gallery.map(g=>g.lifestyle).filter(Boolean))];
   const lifeEl=$('#gal-life');
   if(lifeEl)lifeEl.innerHTML=['all',...lifes].map(s=>`<button class="togglepill ${state.galLife===s?'on':''}" data-life="${s}">${s==='all'?'전체 라이프스타일':esc(s)}</button>`).join('');
-  if(!items.length){grid.innerHTML=`<div class="empty" style="grid-column:1/-1">${state.galLife!=='all'||state.galFilter!=='all'?'해당 조건의 생성물이 없습니다.':'아직 생성물이 없습니다. 생성 탭에서 만들어보세요.'}</div>`;return;}
+  if(!items.length){grid.innerHTML=`<div class="empty" style="grid-column:1/-1">${state.galLife!=='all'||state.galFilter!=='all'?'해당 조건의 생성물이 없습니다.':'아직 생성물이 없습니다. 생성 탭에서 만들어보세요.'}</div>`;const bar0=$('#gal-selbar');if(bar0)bar0.innerHTML='';return;}
   const showLogo=$('#showlogo').checked;
+  const selMode=state.galSelMode;
+  const bar=$('#gal-selbar');
+  if(bar)bar.innerHTML=`<button class="btn sm ${selMode?'primary':''}" id="gal-selbtn">${selMode?'선택 취소':'선택'}</button>`+(selMode?`<button class="btn sm" id="gal-sharebtn">↗ 다른 계정에 공유 (${state.galSel.size})</button><span class="hint" style="margin:0">내 갤러리엔 그대로 남고, 고른 계정에도 보여요</span>`:'');
   grid.innerHTML=items.map(g=>{const life=g.lifestyle?`<span class="lifetag">${esc(g.lifestyle)}</span>`:'';
     const bits=[esc(g.season)];if(g.category)bits.push(esc(g.category.parent));if(g.team)bits.push(esc(g.team));if(g.shot==='worn')bits.push('착장');else if(g.shot==='product')bits.push('제품');if(g.parentId&&!g.worn)bits.push('edit');
     const tg=g.uploaded?[esc(g.season),'업로드'].filter(Boolean).join(' · '):bits.join(' · ');
-    return`<div class="card" data-gid="${g.id}">${life}<button class="x" data-galdel="${g.id}">✕</button><span class="thumb" style="background-image:url('${showLogo&&g.logoUrl?g.logoUrl:g.dataUrl}')"></span><div class="meta"><div class="nm">${esc(g.name)}</div><div class="tg">${tg}</div></div></div>`;}).join('');
+    const shared=isSharedToMe(g)?`<span class="lifetag" style="left:auto;right:8px;background:#8a6d3b;color:#fff">↗ 공유받음</span>`:'';
+    const mineShared=(!isSharedToMe(g)&&(g.sharedWith||[]).length)?`<span class="lifetag" style="left:auto;right:8px;background:var(--pine);color:#fff">공유중 ${g.sharedWith.length}</span>`:'';
+    const on=selMode&&state.galSel.has(g.id);
+    const selbox=(selMode&&!isSharedToMe(g))?`<span class="selbox ${on?'on':''}">${on?'✓':''}</span>`:'';
+    const delBtn=isSharedToMe(g)?'':`<button class="x" data-galdel="${g.id}">✕</button>`;
+    return`<div class="card ${on?'picked':''}" data-gid="${g.id}">${life}${shared}${mineShared}${selbox}${delBtn}<span class="thumb" style="background-image:url('${showLogo&&g.logoUrl?g.logoUrl:g.dataUrl}')"></span><div class="meta"><div class="nm">${esc(g.name)}</div><div class="tg">${tg}</div></div></div>`;}).join('');
 }
 
 /* ---------- compare ---------- */
@@ -2190,7 +2223,7 @@ async function handleFiles(files,store){
     const m=parseName(f.name);if(m.ok)parsed++;
     const it={id:uid(),name:m.name,dataUrl:du,gender:pg||m.gender||'',gcat:pc||m.gcat||'',season:ps||m.season||'',createdAt:Date.now()};
     if(store==='lines'){it.category='';it.lifestyle='';if(it.gcat==='SHOES')it.shoeType=m.shoeType||'';}
-    if(store==='refs'){it.tags=[];it.shoeType=(it.gcat==='SHOES'?(m.shoeType||''):'');it.lifestyle='';it.trend=!!(($('#ref-trend-up')||{}).checked);if(it.trend)it.trendAt=Date.now();it.hashtags=[];}
+    if(store==='refs'){it.tags=[];it.shoeType=(it.gcat==='SHOES'?(m.shoeType||''):'');it.lifestyle='';it.trend=!!(($('#ref-trend-up')||{}).checked);if(it.trend)it.trendAt=Date.now();it.hashtags=[];if(state.prodFilter.secret&&canSecret()){it.secret=true;it.owner=authEmail;}}
     if(store==='fabrics')it.ftype='';
     state[store].push(it);await storePut(store,it);}
   libGrid(store);refreshCounts();renderPicks();
@@ -2313,6 +2346,8 @@ function wire(){
     const sclr=e.target.closest('[data-selclear]');if(sclr){const st=sclr.dataset.selclear;state.libSel[st].clear();libGrid(st);return;}
     const sap=e.target.closest('[data-selapply]');if(sap){await bulkApply(sap.dataset.selapply);return;}
     if(e.target.id==='grp-savebtn'){saveGroups(true);return;}
+    const rsec=e.target.closest('[data-refsecret]');if(rsec){state.prodFilter.secret=!state.prodFilter.secret;state.prodShowAll=false;state.libSelMode.refs=state.prodFilter.secret?true:state.libSelMode.refs;renderProducts();return;}
+    const rprom=e.target.closest('[data-refpromote]');if(rprom){const ids=[...state.libSel.refs];const picks=state.refs.filter(r=>r.secret&&ids.includes(r.id));if(!picks.length){toast('공유로 올릴 시크릿 레퍼를 먼저 선택하세요');return;}if(!confirm(`${picks.length}장을 팀 공용 레퍼런스로 올릴까요? (모두가 보게 됩니다)`))return;(async()=>{for(const r of picks){r.secret=false;await storePut('refs',r);}state.libSel.refs.clear();renderProducts();toast(`${picks.length}장을 공용 레퍼런스로 올렸습니다`);})();return;}
     const rcat=e.target.closest('[data-refcat]');if(rcat){state.prodFilter.cat=rcat.dataset.refcat;state.prodShowAll=false;renderRefCatChips();renderWordCloud();if(state.refView==='group')renderGroups();else if(state.refView==='matrix')renderRefMatrix();else renderProducts();return;}
     const sgrp=e.target.closest('[data-selgroup]');if(sgrp){const ids=[...state.libSel.refs];if(!ids.length){toast('먼저 항목을 선택하세요.');return;}pickGroupName(nm=>{assignToGroup(nm,ids);state.libSel.refs.clear();state.libSelMode.refs=false;toast(`"${nm}" 그룹에 ${ids.length}개 추가됨`);setRefView('group');});return;}
     const gmore=e.target.closest('[data-grpmorebtn]');if(gmore){state.grpExpanded.add(gmore.dataset.grpmorebtn);renderGroups();return;}
@@ -2321,7 +2356,11 @@ function wire(){
     const grem=e.target.closest('[data-grpremove]');if(grem){const g=state.groups.find(x=>x.id===grem.dataset.grpremove);if(!g)return;if(!confirm(`"${g.name}" 그룹을 삭제할까요? (사진 자체는 지워지지 않아요)`))return;state.groups=state.groups.filter(x=>x.id!==g.id);saveGroups();renderGroups();return;}
     const gdel=e.target.closest('[data-grpdel]');if(gdel){const g=state.groups.find(x=>x.id===gdel.dataset.grpdel);if(!g)return;g.ids=g.ids.filter(id=>id!==gdel.dataset.gitem);saveGroups();renderGroups();return;}
     const gnew=e.target.closest('#grp-new-upload');if(gnew){const nm=prompt('새 그룹 이름 (예: SNEAKERS LOAFER)');if(!nm||!nm.trim())return;const g={id:uid(),name:nm.trim(),ids:[],cat:(state.prodFilter.cat||'SHOES'),createdAt:Date.now()};state.groups.push(g);saveGroups();groupUploadTarget=g.id;uploadStore='__group';$('#hidden-file').click();return;}
-    const gcard=e.target.closest('#grid-gallery .card');if(gcard&&!e.target.closest('.x')){openEdit(gcard.dataset.gid);return;}
+    if(e.target.id==='gal-selbtn'){state.galSelMode=!state.galSelMode;if(!state.galSelMode)state.galSel.clear();galleryGrid();return;}
+    if(e.target.id==='gal-sharebtn'){shareGallerySelected();return;}
+    const gcard=e.target.closest('#grid-gallery .card');if(gcard&&!e.target.closest('.x')){
+      if(state.galSelMode){const g=state.gallery.find(x=>x.id===gcard.dataset.gid);if(g&&!isSharedToMe(g)){if(state.galSel.has(g.id))state.galSel.delete(g.id);else state.galSel.add(g.id);galleryGrid();}return;}
+      openEdit(gcard.dataset.gid);return;}
     const gcat=e.target.closest('[data-galcat]');if(gcat){state.galCat=gcat.dataset.galcat;galleryGrid();return;}
     const filt=e.target.closest('[data-filter]');if(filt){state.galFilter=filt.dataset.filter;galleryGrid();return;}
     const lf=e.target.closest('[data-life]');if(lf){state.galLife=lf.dataset.life;galleryGrid();return;}
@@ -2393,6 +2432,7 @@ async function boot(){
   if(cloudOn())toast('클라우드(Supabase) 연결됨 · 공용 데이터 로드');
   try{state.lines=await storeAll('lines');state.refs=await storeAll('refs');state.models=await storeAll('models');state.fabrics=await storeAll('fabrics');state.gallery=await storeAll('gallery');}catch(e){toast('클라우드 로드 실패, 로컬 데이터로 표시: '+e.message);state.lines=await allOf('lines');state.refs=await allOf('refs');state.models=await allOf('models');state.fabrics=await allOf('fabrics');state.gallery=await allOf('gallery');}
   state.gallery=(state.gallery||[]).filter(galleryVisible); // 생성 결과물은 로그인 계정 것만
+  state.refs=(state.refs||[]).filter(refVisible); // 시크릿 레퍼는 소유자에게만
   state.models=(state.models||[]).filter(m=>!/^\s*DUVETICA/i.test(m.name||'')); // 다른 브랜드(DUVETICA) 모델은 MLB에서 숨김
   try{
     let loaded=false;
@@ -2436,7 +2476,11 @@ function enterApp(session){
   const g=$('#login-gate');if(g)g.classList.add('hidden');
   if(!_booted){_booted=true;boot();}
 }
-function galleryVisible(it){const o=(it&&it.owner||'').toLowerCase();return o?o===authEmail:(authEmail===LEGACY_OWNER);}
+function galleryVisible(it){const o=(it&&it.owner||'').toLowerCase();const sw=(it&&it.sharedWith||[]).map(x=>(x||'').toLowerCase());if(sw.includes(authEmail))return true;return o?o===authEmail:(authEmail===LEGACY_OWNER);}
+function isSharedToMe(g){const o=(g&&g.owner||'').toLowerCase();const mine=o?o===authEmail:(authEmail===LEGACY_OWNER);return !mine && (g&&g.sharedWith||[]).map(x=>(x||'').toLowerCase()).includes(authEmail);}
+const SECRET_OWNER='jisoo07@fnfcorp.com'; // 시크릿 레퍼런스 저장소(소비자전략팀) 소유 계정
+function canSecret(){return authEmail===SECRET_OWNER;}
+function refVisible(r){return !r||!r.secret||(r.owner||'').toLowerCase()===authEmail;} // 시크릿 레퍼는 소유자만
 async function tryRestore(){
   let saved='';try{saved=localStorage.getItem('mlb_session')||sessionStorage.getItem('mlb_session')||'';}catch(e){}
   if(!saved)return false;
