@@ -422,7 +422,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
           </div>
           <div class="sectlabel">1 · 베이스 라인 <span class="hint" style="margin:0;color:var(--ink-45)">(선택 — 없으면 레퍼런스만으로 생성)</span> <span id="prevlabel" class="chip pine"></span> <span class="hint" style="margin:0">— 모델·포즈·나머지 스타일링을 유지할 원본</span></div>
           <div id="pick-lines" class="pickbar"></div>
-          <div class="sectlabel">2 · 레퍼런스 <span class="hint" style="margin:0">— 선택 카테고리 디자인을 채용 (여러 장)</span></div>
+          <div class="sectlabel">2 · 레퍼런스 · 기존 생성물 <span class="hint" style="margin:0">— 디자인 채용(여러 장) · 아카이브에서 '기존 생성물'도 선택 가능</span></div>
           <div id="pick-refs" class="pickbar"></div>
           <div id="cap-zone" class="drop" style="padding:12px;margin-top:8px" tabindex="0"><b>캡처 붙여넣기</b> (여기 클릭 후 <b>Ctrl+V</b>) · 또는 클릭해서 파일 선택<br><span style="font-size:12px">불러오기 안 되는 브랜드 이미지는 캡처해서 바로 레퍼런스로 추가하세요 (즉시 저장·CORS 무관)</span></div>
           <div class="grid2" style="gap:18px">
@@ -833,12 +833,15 @@ function srWord(v){return v<=0?null:v<=33?'lightly':v<=66?'moderately':'strongly
 function balWord(v){v=+v;return v<20?'taken EXACTLY from the MLB base line — reproduce this part identically (same shape, proportions and construction) with essentially NO reference influence':v<45?'leaning toward the MLB base line, with the reference lightly informing the details':v<70?'an EQUAL 50/50 blend — VISIBLY and clearly adopt the reference shape and structure for this part (not a faint hint); it must read as much from the reference as from the MLB base line':v<90?'driven MAINLY by the reference for shape and structure; the MLB base line only contributes brand quality and proportion':'taken EXACTLY from the reference — reproduce the reference for this part identically, with essentially NO MLB base-line influence';}
 function colorBalWord(v){v=+v;return v<20?'the colorway is the MLB base line colors exactly — same colors and color blocking as the MLB line':v<40?'an MLB-similar tone — stay in the MLB base line color family, with only a slight refined variation':v<60?'a NEW colorway — propose a fresh, season-appropriate color story that is NOT copied from the MLB line nor the reference (a new original palette for this product)':v<80?'a reference-similar tone — stay in the REFERENCE color family, with only a slight variation':'the REFERENCE colors exactly — match the reference image color, tones and color blocking';}
 function colorBalHint(v){v=+v;return v<20?'MLB 컬러':v<40?'MLB 유사 톤':v<60?'NEW 컬러':v<80?'레퍼런스 유사 톤':'레퍼런스 톤';}
+function colorBalWord2(v){v=+v;return v<20?'the colorway is taken from the FIRST reference — its exact colors and color blocking':v<40?'lean to the FIRST reference colors, lightly adjusted':v<60?'a NEW colorway blending the two references into a fresh original palette (not strictly either one)':v<80?'lean to the SECOND reference colors, lightly adjusted':'the colorway is taken from the SECOND reference — its exact colors and color blocking';}
+function colorBalHint2(v){v=+v;return v<20?'1번 색':v<40?'1번 우세':v<60?'NEW 색':v<80?'2번 우세':'2번 색';}
+function colorHintFor(v){return twoRefsPicked()?colorBalHint2(v):colorBalHint(v);}
 function shoeBalClauses(J,noun){
   const sb=J.shoe_balance;if(!sb)return[];
   const out=[];
   if(sb.upper!=null)out.push(`UPPER BALANCE — the upper (panels, material, overlays, collar, tongue, lacing area) is ${balWord(sb.upper)}.`);
   if(sb.sole!=null)out.push(`SOLE BALANCE — the sole unit (midsole height and shape, outsole tooling, stack) is ${balWord(sb.sole)}.`);
-  if(sb.color!=null)out.push(`COLOR BALANCE — ${colorBalWord(sb.color)}. This controls color only; do not let it change the silhouette or structure set by the balance settings above.`);
+  if(sb.color!=null)out.push(`COLOR BALANCE — ${twoRefsPicked()?colorBalWord2(sb.color):colorBalWord(sb.color)}. This controls color only; do not let it change the silhouette or structure set by the balance settings above.`);
   return out;
 }
 function adoptClauses(J,noun){
@@ -857,7 +860,7 @@ function volumeHint(v){v=+v;return v<18?'슬림·경량':v<42?'로우로프트':
 function computePlan(){
   const line=state.lines.find(l=>l.id===state.pick.line);
   const model=state.models.find(m=>m.id===state.pick.model);
-  const refs=allRefs().filter(r=>state.pick.refs.has(r.id));
+  const refs=pickedRefs();
   const shell=state.fabrics.find(f=>f.id===state.pick.fabric);
   const noun=CATEGORIES[$('#cat-parent').value].noun;
   const isShoeCat=$('#cat-parent').value==='SHOES';
@@ -1313,6 +1316,13 @@ function refById(id){ // id: ref id 또는 'prod_<num>'
   if(String(id).startsWith('prod_')){const pid=String(id).slice(5);const p=(state.products||[]).find(x=>String(x.id)===pid);return p?productAsRef(p):null;}
   return state.refs.find(r=>r.id===id)||null;
 }
+function galAsRef(g){return {id:'gal_'+g.id,name:g.name||'생성물',dataUrl:(g.logoUrl||g.dataUrl),gcat:galCatOf(g)||'',detail:false,_gallery:true};}
+function refByAny(id){ // ref/prod_/gal_ 모두 해석
+  if(String(id).startsWith('gal_')){const gid=String(id).slice(4);const g=(state.gallery||[]).find(x=>x.id===gid);return g?galAsRef(g):null;}
+  return refById(id);
+}
+function pickedRefs(){return [...state.pick.refs].map(refByAny).filter(Boolean);}
+function twoRefsPicked(){return pickedRefs().filter(r=>!r.detail).length>=2;}
 function groupByName(name){return state.groups.find(g=>g.name.toLowerCase()===name.trim().toLowerCase());}
 function pickGroupName(cb){
   const cat=state.prodFilter.cat;
@@ -1493,7 +1503,7 @@ function renderProducts(){
 /* ---------- generate picks (bars + inline) ---------- */
 function renderPickBar(store){
   const bar=$('#pick-'+store);
-  const sel=store==='lines'?(state.pick.line?[state.lines.find(l=>l.id===state.pick.line)].filter(Boolean):[]):allRefs().filter(r=>state.pick.refs.has(r.id));
+  const sel=store==='lines'?(state.pick.line?[state.lines.find(l=>l.id===state.pick.line)].filter(Boolean):[]):pickedRefs();
   bar.innerHTML=sel.map(it=>`<div class="thumbchip ${corsRisky(it.dataUrl)?'risky':''}" title="${corsRisky(it.dataUrl)?'이 이미지는 생성 시 불러오기 실패할 수 있어요(CORS). 캡처해서 다시 넣으세요.':''}"><img src="${it.dataUrl}">${corsRisky(it.dataUrl)?'<span class="riskbadge">⚠</span>':''}<span>${esc(it.name)}</span><button data-unpick="${store}" data-uid="${it.id}">✕</button></div>`).join('')
     +`<button class="btn sm addarch" data-arch="${store}">＋ 아카이브에서 셀렉</button>`;
 }
@@ -1514,7 +1524,7 @@ function renderPicks(){
 /* ---------- ARCHIVE BROWSER ---------- */
 function openArchive(store){
   const isLines=store==='lines',multi=store==='refs';
-  let q='',genderF='ALL',gcatF='ALL',tagF='ALL',stF='ALL',trendF=false,secretF=false,groupF='',seasonF=isLines?(prevSeason($('#season').value)||'ALL'):'ALL';
+  let q='',genderF='ALL',gcatF='ALL',tagF='ALL',stF='ALL',trendF=false,secretF=false,srcF='refs',groupF='',seasonF=isLines?(prevSeason($('#season').value)||'ALL'):'ALL';
   $('#sheet').classList.add('wide');
   $('#m-title').textContent=isLines?'라인 아카이브':'레퍼런스 아카이브';
   $('#m-body').innerHTML=`
@@ -1527,11 +1537,13 @@ function openArchive(store){
     <div class="arch-chips" id="arch-chips"></div>
     <div class="arch-grid" id="arch-grid"></div>`;
   const chipsEl=$('#arch-chips'),gridEl=$('#arch-grid'),countEl=$('#arch-count');
-  const pool=()=>isLines?state.lines:allRefs();
+  const pool=()=>isLines?state.lines:(srcF==='gallery'?(state.gallery||[]).filter(galleryVisible).map(galAsRef):allRefs());
   const grp=(axis,label,opts,cur)=>`<div class="chipgroup"><span class="chiplabel">${label}</span>`+[['ALL','전체'],...opts.map(o=>[o,o])].map(([v,l])=>`<button class="togglepill ${cur===v?'on':''}" data-axis="${axis}" data-val="${esc(v)}">${esc(l)}</button>`).join('')+`</div>`;
   function chips(){
     const seasons=[...new Set(pool().map(x=>x.season).filter(Boolean))].sort();
-    let h=grp('gender','성별',GENDER_OPTS,genderF)+grp('gcat','카테고리',GCAT_OPTS,gcatF);
+    let h='';
+    if(!isLines)h+=`<div class="chipgroup"><span class="chiplabel">소스</span><button class="togglepill ${srcF==='refs'?'on':''}" data-axis="src" data-val="refs">레퍼런스</button><button class="togglepill ${srcF==='gallery'?'on':''}" data-axis="src" data-val="gallery">기존 생성물</button></div>`;
+    h+=grp('gender','성별',GENDER_OPTS,genderF)+grp('gcat','카테고리',GCAT_OPTS,gcatF);
     if(gcatF==='SHOES')h+=grp('shoetype','세부(슈즈타입)',SHOE_TYPES,stF); // SHOES 선택 시 세부 카테고리
     h+=grp('season','시즌',seasons,seasonF);
     if(!isLines){
@@ -1578,7 +1590,7 @@ function openArchive(store){
   }
   chips();render();
   $('#arch-q').addEventListener('input',e=>{q=e.target.value;render();});
-  chipsEl.addEventListener('click',e=>{const b=e.target.closest('[data-axis]');if(!b)return;const v=b.dataset.val,ax=b.dataset.axis;if(ax==='gender')genderF=v;else if(ax==='gcat'){gcatF=v;if(v!=='SHOES')stF='ALL';}else if(ax==='shoetype')stF=v;else if(ax==='season')seasonF=v;else if(ax==='tag')tagF=v;else if(ax==='trend'){trendF=!trendF;if(trendF)groupF='';}else if(ax==='secret'){secretF=!secretF;}else if(ax==='group'){groupF=(groupF===v)?'':v;if(groupF)trendF=false;}chips();render();});
+  chipsEl.addEventListener('click',e=>{const b=e.target.closest('[data-axis]');if(!b)return;const v=b.dataset.val,ax=b.dataset.axis;if(ax==='gender')genderF=v;else if(ax==='src'){srcF=v;}else if(ax==='gcat'){gcatF=v;if(v!=='SHOES')stF='ALL';}else if(ax==='shoetype')stF=v;else if(ax==='season')seasonF=v;else if(ax==='tag')tagF=v;else if(ax==='trend'){trendF=!trendF;if(trendF)groupF='';}else if(ax==='secret'){secretF=!secretF;}else if(ax==='group'){groupF=(groupF===v)?'':v;if(groupF)trendF=false;}chips();render();});
   gridEl.addEventListener('click',e=>{
     const bz=e.target.closest('[data-bigzoom]');if(bz){e.stopPropagation();openLightbox(bz.dataset.bigzoom);return;}
     const c=e.target.closest('[data-aid]');if(!c)return;const id=c.dataset.aid;
@@ -1626,7 +1638,7 @@ function applyCategory(reset){
     if(shoe){mbody.style.display='none';mtog.style.display='';mtog.textContent='— 펼치기 (신발은 선택 불필요)';}
     else{mbody.style.display='';mtog.style.display='none';}
   }
-  if($('#balance-h')&&$('#balance')){const bv=+$('#balance').value;$('#balance-h').textContent=shoe?colorBalHint(bv):balanceHint(bv);}
+  if($('#balance-h')&&$('#balance')){const bv=+$('#balance').value;$('#balance-h').textContent=shoe?colorHintFor(bv):balanceHint(bv);}
   if(reset){state.brief.keep=new Set(C.keepDefault);state.brief.replace=new Set(C.replaceDefault);state.brief.adopt=new Set(C.adoptDefault);state.brief.fabricType='';state.aiAttrs={};}
   renderPills();if(shoe)renderShoeBal();refreshJSON(true);
 }
@@ -1998,6 +2010,7 @@ async function runEdit(kind,opt){
     if((cur.category&&cur.category.parent==='OUTERWEAR')||/OUTER/i.test(cur.gcat||'')){
       prompt+=` OUTERWEAR-ONLY REPLACEMENT — the selected garment is OUTERWEAR worn as the OUTERMOST layer. STRICTLY PRESERVE the model's existing styling from image 2: inner top/shirt/knit/dress, bottoms (skirt/pants), tights/socks, shoes, bag and all accessories — do NOT restyle, recolor, replace or regenerate any of them; add or replace ONLY the outer layer. Keep clear physical boundaries between the outerwear, the inner clothing and exposed skin; do NOT merge the outerwear with the inner garment and do NOT transfer the outerwear's material, color, quilting, pattern or LOGO onto the inner clothing. LOGO SURFACE LOCK — any logo stays clipped to the OUTERWEAR fabric panels only; it must NEVER appear on the inner top/dress, skin, hair, the open zipper gap, accessories or background, and must NEVER float across the open area between the left and right front panels. If the outerwear hangs open, do NOT draw a continuous centered logo bridging the opening onto the inner garment — keep it on one panel (left chest) or split it naturally at the front edge; a continuous center-chest logo is allowed only when the outerwear is shown closed.`;
     }
+    prompt+=` OUTFIT STYLING — the garment from image 1 is the HERO product and stays exactly as-is (do not recolor it). Style the REST of the look (bottoms, footwear, socks, bag, accessories) like a real stylist: they should COORDINATE with the garment but must NOT be an identical head-to-toe single-color match with it or with each other — the look must not become monochrome/matchy. Keep the supporting pieces mostly in soft NEUTRAL tones (brown, gray, black, white, beige, light pink, light blue) so the hero garment stands out; keep FOOTWEAR in natural neutral colors and do NOT recolor the shoes to match the garment. NEVER use silver, metallic, chrome, holographic, neon or any cyber/primary colors on any item. Gray, black and white may appear freely. Vary the supporting style naturally. SOCK RULE — if the shoe has white or beige, socks match that white/beige; if the shoe is silver use light-gray socks, if gray then charcoal is fine; socks may match the shoe's lace color; if the shoe and its laces are one tonal color at the same value, show NO socks; for an all-black shoe use black socks.`;
   }
   else if(kind==='cody')prompt=`Make a MINIMAL, LOCALIZED edit to this image. Keep the MLB main product IDENTICAL — same design, silhouette, color, construction and any visible logo/branding unchanged. Change ONLY what is requested: ${opt.text}. Keep the same model, face, pose, framing, background, lighting, colors and overall image quality/resolution exactly as in the original — do not re-render or restyle anything that was not requested.`;
   else if(kind==='shoefinish'){
@@ -2386,7 +2399,7 @@ function wire(){
   });
 
   const sync=(id,vid,hid,fn)=>{const el=$('#'+id);el.addEventListener('input',()=>{$('#'+vid).textContent=el.value;if(hid)$('#'+hid).textContent=fn(el.value);refreshJSON();});};
-  sync('balance','balance-v','balance-h',v=>($('#cat-parent')&&$('#cat-parent').value==='SHOES')?colorBalHint(v):balanceHint(v));sync('sheer','sheer-v','sheer-h',sheerHint);sync('shimmer','shimmer-v','shimmer-h',shimmerHint);
+  sync('balance','balance-v','balance-h',v=>($('#cat-parent')&&$('#cat-parent').value==='SHOES')?colorHintFor(v):balanceHint(v));sync('sheer','sheer-v','sheer-h',sheerHint);sync('shimmer','shimmer-v','shimmer-h',shimmerHint);
   sync('refmix','refmix-v','refmix-h',refmixHint);
   $('#balance-h').textContent=balanceHint(35);$('#sheer-h').textContent=sheerHint(20);$('#shimmer-h').textContent=shimmerHint(25);if($('#refmix-h'))$('#refmix-h').textContent=refmixHint(50);
   $('#season').addEventListener('change',renderPicks);
