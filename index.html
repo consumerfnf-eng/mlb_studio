@@ -702,6 +702,9 @@ async function supaPutRow(table,row){
 }
 async function supaDelete(table,id){const c=supaCfg();const T=tbl(table);const r=await fetch(`${c.url}/rest/v1/${T}?id=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:{apikey:c.key,Authorization:`Bearer ${c.key}`,Prefer:'return=minimal'}});if(!r.ok)throw new Error(`delete ${T} ${r.status}`);}
 async function supaUpload(path,blob){const c=supaCfg();const r=await fetch(`${c.url}/storage/v1/object/${c.bucket}/${path}`,{method:'POST',headers:{apikey:c.key,Authorization:`Bearer ${c.key}`,'Content-Type':blob.type||'image/png','x-upsert':'true'},body:blob});if(!r.ok)throw new Error(`upload ${r.status} ${await r.text()}`);return `${c.url}/storage/v1/object/public/${c.bucket}/${path}`;}
+function thumb(u,w){ if(!u||typeof u!=='string')return u;
+  var i=u.indexOf('/storage/v1/object/public/'); if(i<0)return u;   // Supabase Storage 파일만(그 외 data:/외부는 그대로)
+  return u.slice(0,i)+'/storage/v1/render/image/public/'+u.slice(i+'/storage/v1/object/public/'.length)+(u.indexOf('?')<0?'?':'&')+'width='+(w||400)+'&quality=55&resize=contain'; }
 async function uploadImages(store,item){
   const it=Object.assign({},item);
   const up=async(du,tag)=>{if(!du||!/^data:/.test(du))return du;return await supaUpload(`${store}/${item.id}_${tag}.png`,dataUrlToBlob(du));};
@@ -1225,7 +1228,7 @@ function libGrid(store){
     const rk=rankHTML(it);
     if(it._product){ // 외부 PRODUCT: 읽기전용(삭제·선택·편집 없음), URL 이미지
       const meta=[it.brand,it.gender,it.shoeType,it.season].filter(Boolean).join(' · ');
-      return`<div class="card ${trend?'trend':''} ro" data-ro="1">${trendBadge}<img class="pthumb" loading="lazy" src="${esc(it.dataUrl||'')}" alt="" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name)}</div><div class="tg">${esc(meta)}</div>${htags}${rk}</div></div>`;
+      return`<div class="card ${trend?'trend':''} ro" data-ro="1">${trendBadge}<img class="pthumb" loading="lazy" src="${esc(thumb(it.dataUrl,400))}" alt="" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name)}</div><div class="tg">${esc(meta)}</div>${htags}${rk}</div></div>`;
     }
     return`<div class="card ${sw} ${on?'picked':''} ${trend?'trend':''}" data-id="${it.id}" data-store="${store}">${trendBadge}${rb}${selbox}<button class="x" data-del="${it.id}" data-store="${store}">✕</button><span class="thumb" style="background-image:url('${it.dataUrl}')"></span><div class="meta"><div class="nm">${esc(it.name)}</div><div class="tg">${esc(metaLine(store,it))}</div>${htags}${rk}${sa}</div></div>`;
   }).join('');
@@ -1360,7 +1363,7 @@ function renderGroups(){
   box.innerHTML=saveBar+groups.slice().sort((a,b)=>b.createdAt-a.createdAt).map(g=>{
     const items=g.ids.map(refById).filter(Boolean);
     const expanded=state.grpExpanded.has(g.id);
-    const cardHTML=(it,hidden)=>`<div class="card ro grpcard${hidden?' grphidden':''}" data-ro="1"><button class="x" data-grpdel="${g.id}" data-gitem="${it.id}" title="그룹에서 빼기">✕</button><img class="pthumb" loading="lazy" src="${esc(it.dataUrl||'')}" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name||'')}</div></div></div>`;
+    const cardHTML=(it,hidden)=>`<div class="card ro grpcard${hidden?' grphidden':''}" data-ro="1"><button class="x" data-grpdel="${g.id}" data-gitem="${it.id}" title="그룹에서 빼기">✕</button><img class="pthumb" loading="lazy" src="${esc(thumb(it.dataUrl,400))}" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name||'')}</div></div></div>`;
     const cards=items.map((it,i)=>cardHTML(it,!expanded&&i>=7)).join('');
     const restN=Math.max(0,items.length-7);
     const more=(restN&&!expanded)?`<button class="btn xs grpmore-btn" data-grpmorebtn="${g.id}" style="margin-top:8px">＋ 더보기 (${restN})</button>`:'';
@@ -1480,7 +1483,7 @@ function renderProducts(){
     const tb=trendActive(it)?`<span class="trend-badge">TREND</span>`:'';
     const unc=(!it.shoeType||!it.lifestyle)?`<span class="unclass">미분류</span>`:'';
     const htags=(it.hashtags&&it.hashtags.length)?`<div class="htags">${it.hashtags.slice(0,5).map(t=>`<span class="htag">#${esc(t)}</span>`).join('')}</div>`:'';
-    return`<div class="card ${on?'picked':''} ${trendActive(it)?'trend':''}" data-id="${it.id}" data-store="refs">${tb}${unc}${selbox}<button class="x" data-del="${it.id}" data-store="refs">✕</button><img class="pthumb" loading="lazy" src="${esc(it.dataUrl||'')}" alt="" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name)}</div><div class="tg">${esc(metaLine('refs',it))}</div>${htags}${rankHTML(it)}</div></div>`;
+    return`<div class="card ${on?'picked':''} ${trendActive(it)?'trend':''}" data-id="${it.id}" data-store="refs">${tb}${unc}${selbox}<button class="x" data-del="${it.id}" data-store="refs">✕</button><img class="pthumb" loading="lazy" src="${esc(thumb(it.dataUrl,400))}" alt="" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name)}</div><div class="tg">${esc(metaLine('refs',it))}</div>${htags}${rankHTML(it)}</div></div>`;
   }).join('');
   const prodCards=prods.slice(0,showN).map(p=>{
     const sw=p.top_hex?`<span style="display:inline-block;width:11px;height:11px;border-radius:3px;border:1px solid var(--line);background:${esc(p.top_hex)};vertical-align:middle;margin-right:4px"></span>`:'';
@@ -1492,7 +1495,7 @@ function renderProducts(){
     const selbox=selMode?`<span class="selbox ${on?'on':''}">${on?'✓':''}</span>`:'';
     const htags=(p.hashtags&&p.hashtags.length)?`<div class="htags">${p.hashtags.slice(0,5).map(t=>`<span class="htag">#${esc(t)}</span>`).join('')}</div>`:'';
     const prk=(p.rank)?`<div class="rankline">📈 ${esc(((p.rank_date||'').trim()||'')+((p.rank_date||'').trim()?', ':'')+p.rank)}</div>`:'';
-    return`<div class="card ${p.is_trend?'trend':''} ro ${on?'picked':''}" data-ro="1" data-id="${pid}" data-pid="${esc(String(p.id))}">${tb}${num}${unc}${selbox}<button class="btn xs pzoom" data-zoom="${esc(p.image_url||'')}" title="크게 보기">⤢</button><button class="btn xs pclass" data-pclass="${esc(String(p.id))}">분류</button><button class="x pdel" data-pdel="${esc(String(p.id))}" title="상품 삭제">✕</button><img class="pthumb" loading="lazy" src="${esc(p.image_url||'')}" alt="" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(p.product_name||'-')}</div><div class="tg">${sw}${esc(meta)}</div>${htags}${prk}</div></div>`;
+    return`<div class="card ${p.is_trend?'trend':''} ro ${on?'picked':''}" data-ro="1" data-id="${pid}" data-pid="${esc(String(p.id))}">${tb}${num}${unc}${selbox}<button class="btn xs pzoom" data-zoom="${esc(p.image_url||'')}" title="크게 보기">⤢</button><button class="btn xs pclass" data-pclass="${esc(String(p.id))}">분류</button><button class="x pdel" data-pdel="${esc(String(p.id))}" title="상품 삭제">✕</button><img class="pthumb" loading="lazy" src="${esc(thumb(p.image_url,400))}" alt="" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(p.product_name||'-')}</div><div class="tg">${sw}${esc(meta)}</div>${htags}${prk}</div></div>`;
   }).join('');
   const remain=prods.length-showN;
   const moreBtn=remain>0?`<div style="grid-column:1/-1;text-align:center;margin-top:12px"><button class="btn" id="prod-more">＋ 더보기 (남은 ${remain}개 전체 보기)</button></div>`:'';
@@ -1818,7 +1821,7 @@ function matrixAnalysis(tagged,total,cell){
   // ── 트렌드 스타일 상위 6 + 더보기 슬라이드 ──
   if(trendItems.length){
     const sorted=trendItems.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-    const card=it=>`<div class="tcard" data-zoom="${esc(it.dataUrl||'')}"><img src="${esc(it.dataUrl||'')}" loading="lazy" onerror="this.style.opacity=.25"><div class="tcname">${esc(it.name||'')}</div><div class="tcsub">${esc([it.shoeType,LIFE_SHORT[it.lifestyle]||''].filter(Boolean).join(' · '))}</div>${rankLine(it)?`<div class="tcrank">📈 ${esc(rankLine(it))}</div>`:''}</div>`;
+    const card=it=>`<div class="tcard" data-zoom="${esc(it.dataUrl||'')}"><img src="${esc(thumb(it.dataUrl,400))}" loading="lazy" onerror="this.style.opacity=.25"><div class="tcname">${esc(it.name||'')}</div><div class="tcsub">${esc([it.shoeType,LIFE_SHORT[it.lifestyle]||''].filter(Boolean).join(' · '))}</div>${rankLine(it)?`<div class="tcrank">📈 ${esc(rankLine(it))}</div>`:''}</div>`;
     const first=sorted.slice(0,6).map(card).join('');
     const rest=sorted.slice(6).map(card).join('');
     out+=`<div class="tsec"><div class="gtitle">트렌드 스타일 <span class="k">(${trendItems.length})</span></div><div class="tstrip">${first}<span class="tmore-wrap" style="display:none">${rest}</span></div>`;
@@ -1877,7 +1880,7 @@ function galleryGrid(){
     const on=selMode&&state.galSel.has(g.id);
     const selbox=(selMode&&!isSharedToMe(g))?`<span class="selbox ${on?'on':''}">${on?'✓':''}</span>`:'';
     const delBtn=isSharedToMe(g)?'':`<button class="x" data-galdel="${g.id}">✕</button>`;
-    return`<div class="card ${on?'picked':''}" data-gid="${g.id}">${life}${shared}${mineShared}${selbox}${delBtn}<span class="thumb" style="background-image:url('${showLogo&&g.logoUrl?g.logoUrl:g.dataUrl}')"></span><div class="meta"><div class="nm">${esc(g.name)}</div><div class="tg">${tg}</div></div></div>`;}).join('');
+    return`<div class="card ${on?'picked':''}" data-gid="${g.id}">${life}${shared}${mineShared}${selbox}${delBtn}<span class="thumb" style="background-image:url('${thumb(showLogo&&g.logoUrl?g.logoUrl:g.dataUrl,400)}')"></span><div class="meta"><div class="nm">${esc(g.name)}</div><div class="tg">${tg}</div></div></div>`;}).join('');
 }
 
 /* ---------- compare ---------- */
