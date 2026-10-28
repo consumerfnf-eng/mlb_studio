@@ -479,7 +479,8 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
             <div class="slider-wrap">
             <div class="slider-head"><span class="lab">디자인 밸런스</span><span class="val" id="balance-v">35</span></div>
             <input type="range" id="balance" min="0" max="100" value="35">
-            <div class="row" style="justify-content:space-between;margin-top:3px"><span class="slider-hint balend-l" style="margin:0">◀ MLB 라인</span><span class="slider-hint" id="balance-h" style="margin:0;color:var(--pine);font-weight:600"></span><span class="slider-hint balend-r" style="margin:0">레퍼런스 ▶</span></div>
+            <div class="row" style="justify-content:space-between;margin-top:3px"><span class="slider-hint" id="bal-main-l" style="margin:0">◀ MLB 라인</span><span class="slider-hint" id="balance-h" style="margin:0;color:var(--pine);font-weight:600"></span><span class="slider-hint" id="bal-main-r" style="margin:0">레퍼런스 ▶</span></div>
+            <div class="slider-hint" id="bal-main-note" style="margin-top:4px;color:var(--ink-45)"></div>
           </div>
           <div class="slider-wrap" id="refmix-wrap" style="display:none">
             <div class="slider-head"><span class="lab">레퍼런스 믹스 (1번↔2번)</span><span class="val" id="refmix-v">50</span></div>
@@ -487,18 +488,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
             <div class="row" style="justify-content:space-between;margin-top:3px"><span class="slider-hint" style="margin:0">◀ 1번 레퍼런스</span><span class="slider-hint" id="refmix-h" style="margin:0;color:var(--pine);font-weight:600"></span><span class="slider-hint" style="margin:0">2번 레퍼런스 ▶</span></div>
           </div>
 
-          <div class="sectlabel">소재 / FABRIC</div>
-          <div class="pillrow" id="fabric-pills"></div>
-          <div class="slider-wrap">
-            <div class="slider-head"><span class="lab">Sheer 시스루</span><span class="val" id="sheer-v">20</span></div>
-            <input type="range" id="sheer" min="0" max="100" value="20"><div class="slider-hint" id="sheer-h"></div>
-          </div>
-          <div class="slider-wrap">
-            <div class="slider-head"><span class="lab">Shimmer 광택</span><span class="val" id="shimmer-v">25</span></div>
-            <input type="range" id="shimmer" min="0" max="100" value="25"><div class="slider-hint" id="shimmer-h"></div>
-          </div>
-
-          <div id="knit-wrap" style="display:none;margin-top:16px;padding:12px;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.015)">
+          <div id="knit-wrap" style="display:none;margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.015)">
             <div class="sectlabel" style="margin:0 0 4px">🧶 스웨터 니트 디테일</div>
             <div class="hint" style="margin:0 0 10px">SWEATER 선택 시에만 표시 · 짜임/패턴을 조절하고 생성물과 짠 조직을 한 장에 함께 출력합니다.</div>
             <div class="slider-wrap" style="margin-top:4px">
@@ -513,6 +503,17 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
             </div>
             <div class="hint" id="knit-pat-note" style="margin:6px 0 0">패턴 믹스는 레퍼런스를 1장 이상 선택하면 활성화됩니다. (2장이면 1번↔새패턴↔2번)</div>
             <label class="row" style="font-size:12px;color:var(--ink-70);gap:6px;margin:10px 0 0"><input type="checkbox" id="knit-detail" checked> 생성물 + 짠 조직 매크로샷 한 장에 함께 출력</label>
+          </div>
+
+          <div class="sectlabel">소재 / FABRIC</div>
+          <div class="pillrow" id="fabric-pills"></div>
+          <div class="slider-wrap">
+            <div class="slider-head"><span class="lab">Sheer 시스루</span><span class="val" id="sheer-v">20</span></div>
+            <input type="range" id="sheer" min="0" max="100" value="20"><div class="slider-hint" id="sheer-h"></div>
+          </div>
+          <div class="slider-wrap">
+            <div class="slider-head"><span class="lab">Shimmer 광택</span><span class="val" id="shimmer-v">25</span></div>
+            <input type="range" id="shimmer" min="0" max="100" value="25"><div class="slider-hint" id="shimmer-h"></div>
           </div>
 
           <div style="margin-top:16px"><label class="fld">추가 디렉션 (선택)</label>
@@ -900,7 +901,8 @@ function computePlan(){
   const pushShell=()=>{if(shell){images.push(shell.dataUrl);roles.push('fabric shell swatch — apply this material surface, weave and sheen to the garment shell');}};
   const designRefs=refs.filter(r=>!r.detail);
   // 레퍼런스 2개 이상: 1번↔2번 믹스 비중을 프롬프트에 반영 (분기 이전에 계산해 모든 경로 적용)
-  const rm=+($('#refmix')?$('#refmix').value:50);
+  // 의류에서 MLB 라인이 없고 레퍼 2개면 '디자인 밸런스' 바가 곧 1↔2 믹스 → #balance 값을 사용
+  const rm=((!isShoeCat&&!line&&designRefs.length>=2)?bal:(+($('#refmix')?$('#refmix').value:50)));
   let refMixClause='';
   if(designRefs.length>=2){
     const aN=designRefs[0].name||'reference A',bN=designRefs[1].name||'reference B';
@@ -1034,7 +1036,9 @@ function jsonToPrompt(J,plan){
   if(m.semi_sheer!=null)md.push(`semi-sheer ${Math.round(m.semi_sheer*100)}% (${sheerText(m.semi_sheer*100)})`);
   if(m.shimmer!=null)md.push(shimmerText(m.shimmer*100));
   if(md.length)S.push(`MATERIAL — ${md.join('; ')}.`);
-  if(J.design_balance!=null)S.push(`DESIGN BALANCE — ${balanceText(J.design_balance*100)}`);
+  const _dr=(plan&&plan.refs?plan.refs:[]).filter(r=>r&&!r.detail);
+  const _bal12=plan&&!plan.line&&(cat.parent||'')!=='SHOES'&&_dr.length>=2; // 라인 없이 레퍼 2개 → 밸런스 바가 1↔2 믹스 역할
+  if(J.design_balance!=null&&!_bal12)S.push(`DESIGN BALANCE — ${balanceText(J.design_balance*100)}`);
   if(plan&&plan.refMixClause)S.push(plan.refMixClause);
   const K=J.knit;
   if(K){
@@ -1553,7 +1557,9 @@ function renderPicks(){
   const src=prevSeason($('#season').value);
   $('#prevlabel').textContent=src?`${src} 라인`:'시즌 확인';
   renderPickBar('lines');renderPickBar('refs');pickGrid('models');pickGrid('fabrics');
-  const rw=$('#refmix-wrap');if(rw)rw.style.display=(state.pick.refs.size>=2)?'block':'none';
+  // 레퍼런스 믹스(1↔2) 바: 신발은 2개면 표시 / 의류는 'MLB 라인+레퍼 2개'일 때만 (라인 없으면 디자인 밸런스 바가 1↔2 역할)
+  const shoeCat=$('#cat-parent')&&$('#cat-parent').value==='SHOES';
+  const rw=$('#refmix-wrap');if(rw)rw.style.display=(state.pick.refs.size>=2&&(shoeCat||!!state.pick.line))?'block':'none';
   refreshKnitPanel();
   refreshBalEnds();
   refreshJSON();
@@ -1659,7 +1665,18 @@ function balWord2(v){v=+v;return v<20?'taken EXACTLY from the FIRST reference fo
 function balHint2(v){v=+v;return v<20?'1번 그대로':v<45?'1번 우선':v<70?'균형(반반)':v<90?'2번 주도':'2번 그대로';}
 function balWordFor(v){return twoRefsPicked()?balWord2(v):balWord(v);}
 function balHintFor(v){return twoRefsPicked()?balHint2(v):balHint(v);}
+// 디자인 밸런스 바 모드: MLB 라인이 있으면 '라인↔레퍼런스' 믹스, 라인 없이 레퍼 2개면 '1번↔2번'
+function mainBalIs12(){const shoe=$('#cat-parent')&&$('#cat-parent').value==='SHOES';const two=twoRefsPicked();const line=!!state.pick.line;return two&&(shoe?true:!line);}
+function setMainBalEnds(){
+  const l=$('#bal-main-l'),r=$('#bal-main-r'),note=$('#bal-main-note');
+  const is12=mainBalIs12(),line=!!state.pick.line,two=twoRefsPicked();
+  if(l)l.textContent=is12?'◀ 1번':'◀ MLB 라인';
+  if(r)r.textContent=is12?'2번 ▶':'레퍼런스 ▶';
+  if(note){const shoe=$('#cat-parent')&&$('#cat-parent').value==='SHOES';
+    note.textContent = shoe ? '' : (is12 ? '레퍼런스 2개 믹스 — 1번↔2번 비중 조절' : (line&&two ? 'MLB 라인↔레퍼런스 비중 (1번↔2번은 아래 레퍼런스 믹스 바)' : 'MLB 라인(또는 MLB DNA)↔레퍼런스 비중'));}
+}
 function refreshBalEnds(){const two=twoRefsPicked();$$('.balend-l').forEach(e=>e.textContent=two?'◀ 1번':'◀ MLB 라인');$$('.balend-r').forEach(e=>e.textContent=two?'2번 ▶':'레퍼런스 ▶');
+  setMainBalEnds();
   const bu=$('#bal-upper'),bs=$('#bal-sole'),bc=$('#balance');
   if(bu&&$('#bal-upper-h'))$('#bal-upper-h').textContent=balHintFor(+bu.value);
   if(bs&&$('#bal-sole-h'))$('#bal-sole-h').textContent=balHintFor(+bs.value);
@@ -1688,7 +1705,7 @@ function applyCategory(reset){
   }
   if($('#balance-h')&&$('#balance')){const bv=+$('#balance').value;$('#balance-h').textContent=shoe?colorHintFor(bv):balanceHint(bv);}
   if(reset){state.brief.keep=new Set(C.keepDefault);state.brief.replace=new Set(C.replaceDefault);state.brief.adopt=new Set(C.adoptDefault);state.brief.fabricType='';state.aiAttrs={};}
-  renderPills();if(shoe)renderShoeBal();refreshKnitPanel();refreshJSON(true);
+  renderPills();if(shoe)renderShoeBal();else refreshBalEnds();refreshKnitPanel();refreshJSON(true);
 }
 
 /* ---------- gallery ---------- */
