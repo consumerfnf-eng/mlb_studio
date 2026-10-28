@@ -322,7 +322,11 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
       <button data-v="compare">비교</button>
       <button data-v="settings">설정</button>
     </nav>
-    <div class="row" style="gap:7px"><span id="keydot" class="keydot"></span><span id="keylabel" style="font-size:11px;color:var(--ink-45)">키 미설정</span></div>
+    <div class="row" style="gap:10px;align-items:center">
+      <span id="whoami" style="font-size:11px;color:var(--ink-45)"></span>
+      <button id="btn-logout-top" class="btn" style="font-size:10px;padding:3px 8px;line-height:1.3;display:none">로그아웃</button>
+      <div class="row" style="gap:7px"><span id="keydot" class="keydot"></span><span id="keylabel" style="font-size:11px;color:var(--ink-45)">키 미설정</span></div>
+    </div>
   </div>
 </header>
 
@@ -486,6 +490,18 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
             <div class="slider-head"><span class="lab">레퍼런스 믹스 (1번↔2번)</span><span class="val" id="refmix-v">50</span></div>
             <input type="range" id="refmix" min="0" max="100" value="50">
             <div class="row" style="justify-content:space-between;margin-top:3px"><span class="slider-hint" style="margin:0">◀ 1번 레퍼런스</span><span class="slider-hint" id="refmix-h" style="margin:0;color:var(--pine);font-weight:600"></span><span class="slider-hint" style="margin:0">2번 레퍼런스 ▶</span></div>
+          </div>
+
+          <div class="slider-wrap" id="blen-wrap" style="display:none;margin-top:14px">
+            <div class="slider-head"><span class="lab">기장 · 하의 길이</span><span class="val" id="blen-v">80</span></div>
+            <input type="range" id="blen" min="0" max="100" value="80">
+            <div class="row" style="justify-content:space-between;margin-top:3px"><span class="slider-hint" style="margin:0">◀ 쇼츠(짧게)</span><span class="slider-hint" id="blen-h" style="margin:0;color:var(--pine);font-weight:600"></span><span class="slider-hint" style="margin:0">풀기장 ▶</span></div>
+            <div class="slider-hint" style="margin-top:4px;color:var(--ink-45)">서브에서 쇼츠/팬츠 종류를 고르고, 이 바로 기장(마이크로~풀기장)을 조절하세요.</div>
+          </div>
+          <div class="slider-wrap" id="tlen-wrap" style="display:none;margin-top:14px">
+            <div class="slider-head"><span class="lab">기장 · 상의 길이</span><span class="val" id="tlen-v">55</span></div>
+            <input type="range" id="tlen" min="0" max="100" value="55">
+            <div class="row" style="justify-content:space-between;margin-top:3px"><span class="slider-hint" style="margin:0">◀ 크롭</span><span class="slider-hint" id="tlen-h" style="margin:0;color:var(--pine);font-weight:600"></span><span class="slider-hint" style="margin:0">튜닉/롱 ▶</span></div>
           </div>
 
           <div id="knit-wrap" style="display:none;margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.015)">
@@ -777,7 +793,7 @@ const CATEGORIES={
     schema:'{"silhouette":"","length":"","neckline":"","collar":"","sleeve":"","quilting":{"type":"","scale":"","puffiness":""},"waist":"","pocket":"","material":{"fabric_type":"","surface":"","finish":""}}',
     attrs:()=>({silhouette:'',length:'',neckline:'',collar:'',sleeve:'',quilting:{type:'',scale:'',puffiness:''},waist:'',pocket:'',material:matDefault()})},
   BOTTOMS:{noun:'bottoms',
-    subs:['LEGGINGS','WIDE PANTS','STRAIGHT PANTS','SKIRT','SHORTS','JOGGER'],
+    subs:['SHORTS','BERMUDA SHORTS','CARGO SHORTS','STRAIGHT PANTS','WIDE PANTS','TAPERED PANTS','CARGO PANTS','LEGGINGS','JOGGER','SKIRT'],
     keepDefault:['model identity','face','hair','pose','background','top','outerwear','footwear'],
     replaceDefault:['bottoms'],
     adoptDefault:['silhouette','leg shape','length'],
@@ -867,6 +883,19 @@ function knitPatWord2(v,aN,bN){v=+v;if(v<18)return `Use the knit PATTERN / jacqu
 function knitPatWord1(v,aN){v=+v;if(v<30)return `Reproduce the knit PATTERN / motif of the reference (${aN}) closely — same motif, scale and colorway, knitted into the yarn (not printed).`;if(v<=60)return `Base the knit pattern on the reference (${aN}) but re-work the scale and spacing into a fresh variation.`;return `Design a NEW original knit pattern / jacquard inspired by the reference (${aN}) — keep its mood and palette but a clearly new motif.`;}
 function isSweater(){return $('#cat-parent')&&$('#cat-parent').value==='TOP'&&$('#cat-sub')&&$('#cat-sub').value==='SWEATER'&&canSweater();}
 function refreshKnitPanel(){const wrap=$('#knit-wrap');if(!wrap)return;const sw=isSweater();wrap.style.display=sw?'block':'none';if(!sw)return;const rN=pickedRefs().filter(r=>!r.detail),two=rN.length>=2,any=rN.length>=1;const pv=+($('#knit-pat')?$('#knit-pat').value:50);if($('#knit-pat-h'))$('#knit-pat-h').textContent=any?knitPatHint(pv,two):'자동 패턴';const l=$('#knit-pat-l'),r=$('#knit-pat-r');if(l&&r){if(two){l.textContent='◀ 레퍼1 패턴';r.textContent='레퍼2 패턴 ▶';}else{l.textContent='◀ 레퍼 패턴';r.textContent='새 패턴 ▶';}}const pr=$('#knit-pat-wrap');if(pr)pr.style.display=any?'block':'none';const note=$('#knit-pat-note');if(note)note.style.display=any?'none':'block';}
+/* ----- 하의/상의 기장(length) ----- */
+function bottomLenWord(v){v=+v;return v<15?'micro shorts length (upper-thigh, very short)':v<30?'short shorts length (mid-thigh)':v<45?'bermuda length (ending just above the knee)':v<58?'knee-length / capri start (at the knee)':v<72?'below-knee calf (midi) length':v<85?'ankle-cropped length (ending at the ankle)':'full floor-length (full-length trousers)';}
+function bottomLenHint(v){v=+v;return v<15?'마이크로':v<30?'쇼츠':v<45?'버뮤다(무릎위)':v<58?'무릎':v<72?'미디/카프리':v<85?'앵클':'풀기장';}
+function topLenWord(v){v=+v;return v<20?'cropped length (hem ends above the waist, midriff-level)':v<45?'short length (hem at the waist)':v<65?'regular length (hem at the hip)':v<82?'longline length (hem below the hip)':'tunic / oversized long length (hem at mid-thigh)';}
+function topLenHint(v){v=+v;return v<20?'크롭':v<45?'숏(허리)':v<65?'레귤러(힙)':v<82?'롱(힙아래)':'튜닉/롱';}
+function refreshLenPanels(){const p=$('#cat-parent')&&$('#cat-parent').value;const bw=$('#blen-wrap'),tw=$('#tlen-wrap');if(bw)bw.style.display=(p==='BOTTOMS')?'block':'none';if(tw)tw.style.display=(p==='TOP')?'block':'none';}
+/* 로그인 계정 표시 + 카테고리 접근 제어(허용 계정 외 전 카테고리 '진행중') */
+function applyAccess(){
+  const ok=canUseCats();
+  const who=$('#whoami');if(who)who.textContent=authEmail?('👤 '+authEmail):'';
+  const lo=$('#btn-logout-top');if(lo)lo.style.display=authEmail?'inline-flex':'none';
+  const cp=$('#cat-parent');if(cp)[...cp.options].forEach(o=>{const base=o.value;o.textContent=ok?base:(base+' (진행중)');o.disabled=!ok;});
+}
 function srWord(v){return v<=0?null:v<=33?'lightly':v<=66?'moderately':'strongly';}
 function balWord(v){v=+v;return v<20?'taken EXACTLY from the MLB base line — reproduce this part identically (same shape, proportions and construction) with essentially NO reference influence':v<45?'leaning toward the MLB base line, with the reference lightly informing the details':v<70?'an EQUAL 50/50 blend — VISIBLY and clearly adopt the reference shape and structure for this part (not a faint hint); it must read as much from the reference as from the MLB base line':v<90?'driven MAINLY by the reference for shape and structure; the MLB base line only contributes brand quality and proportion':'taken EXACTLY from the reference — reproduce the reference for this part identically, with essentially NO MLB base-line influence';}
 function colorBalWord(v){v=+v;return v<20?'the colorway is the MLB base line colors exactly — same colors and color blocking as the MLB line':v<40?'an MLB-similar tone — stay in the MLB base line color family, with only a slight refined variation':v<60?'a NEW colorway — propose a fresh, season-appropriate color story that is NOT copied from the MLB line nor the reference (a new original palette for this product)':v<80?'a reference-similar tone — stay in the REFERENCE color family, with only a slight variation':'the REFERENCE colors exactly — match the reference image color, tones and color blocking';}
@@ -900,7 +929,7 @@ function computePlan(){
   const model=state.models.find(m=>m.id===state.pick.model);
   const refs=pickedRefs();
   const shell=state.fabrics.find(f=>f.id===state.pick.fabric);
-  const noun=CATEGORIES[$('#cat-parent').value].noun;
+  const noun=(CATEGORIES[$('#cat-parent').value]||CATEGORIES.OUTERWEAR).noun;
   const isShoeCat=$('#cat-parent').value==='SHOES';
   const sel=($('#model-source')&&$('#model-source').value)||'idol';
   const modelMode=isShoeCat?'product':(model?'image':sel); // product | image | preserve | idol
@@ -969,12 +998,14 @@ function deepFill(base,ai){if(!ai)return base;Object.keys(base).forEach(k=>{if(b
 function buildDesignJSON(){
   const plan=computePlan();
   const target=$('#season').value, source=prevSeason(target);
-  const parent=$('#cat-parent').value, sub=$('#cat-sub').value, C=CATEGORIES[parent];
+  const parent=$('#cat-parent').value, sub=$('#cat-sub').value, C=CATEGORIES[parent]||CATEGORIES.OUTERWEAR;
   let g=C.attrs();
   deepFill(g,state.aiAttrs.garment);
   g.material.semi_sheer=+$('#sheer').value/100;
   g.material.shimmer=+$('#shimmer').value/100;
   g.material.shell_ref=!!plan.shell;
+  if(parent==='BOTTOMS'){const v=+($('#blen')?$('#blen').value:80);g.length=bottomLenWord(v);g.len_pct=v;}
+  if(parent==='TOP'){const v=+($('#tlen')?$('#tlen').value:55);g.length=topLenWord(v);g.len_pct=v;}
   if(state.brief.fabricType)g.material.fabric_type=state.brief.fabricType;
   return{
     target_season:target, source_season:source,
@@ -1074,7 +1105,7 @@ function jsonToPrompt(J,plan){
   return S.join(' ');
 }
 function rolesToText(roles){return roles.map((r,i)=>`image ${i+1}: ${r}`).join('. ');}
-function updatePromptPrev(){const plan=computePlan();$('#promptprev').textContent=jsonToPrompt(currentJSON(),plan);$('#btn-gen').disabled=!(state.pick.line||state.pick.refs.size);}
+function updatePromptPrev(){const plan=computePlan();$('#promptprev').textContent=jsonToPrompt(currentJSON(),plan);$('#btn-gen').disabled=!(state.pick.line||state.pick.refs.size)||!canUseCats();}
 
 /* ---------- OpenAI ---------- */
 const OL_PLACES={SMALL:[['LEFT_CHEST','좌측 가슴'],['RIGHT_CHEST','우측 가슴'],['LEFT_SLEEVE','좌측 소매']],BIG:[['CENTER_CHEST','가슴 중앙'],['CENTER_BACK','등판 중앙']]};
@@ -1138,7 +1169,7 @@ async function openaiVision(messages){
 }
 async function analyzeRefs(){
   const plan=computePlan();if(!plan.refs.length){toast('레퍼런스를 먼저 선택하세요.');return;}
-  const C=CATEGORIES[$('#cat-parent').value];
+  const C=CATEGORIES[$('#cat-parent').value]||CATEGORIES.OUTERWEAR;
   const btn=$('#btn-analyze');btn.disabled=true;btn.textContent='분석 중…';
   try{
     const content=[{type:'text',text:`아래 레퍼런스 ${C.noun} 이미지를 읽고 디자인 속성을 JSON으로만 출력해줘. 설명·마크다운·코드펜스 없이 순수 JSON 객체 하나만. 스키마: ${C.schema}. 확실치 않은 값은 빈 문자열로.`}];
@@ -1152,6 +1183,7 @@ async function analyzeRefs(){
 
 /* ---------- generate ---------- */
 async function doGenerate(){
+  if(!canUseCats()){toast('카테고리 생성 기능은 준비 중입니다 (진행중).');return;}
   if(($('#cat-parent')&&$('#cat-parent').value==='TOP')&&($('#cat-sub')&&$('#cat-sub').value==='SWEATER')&&!canSweater()){toast('SWEATER(니트)는 준비 중입니다 (빌딩중).');return;}
   if(!state.pick.line && !state.pick.refs.size){toast('베이스 라인 또는 레퍼런스를 최소 1개 선택하세요.');return;}
   const plan=computePlan(),J=currentJSON(),prompt=jsonToPrompt(J,plan);
@@ -1662,7 +1694,7 @@ function closeModal(){$('#modal').classList.remove('on');$('#sheet').classList.r
 
 /* ---------- pills ---------- */
 function renderPills(){
-  const parent=$('#cat-parent').value,adoptOpts=CATEGORIES[parent].adoptOpts,shoe=parent==='SHOES';
+  const parent=$('#cat-parent').value,adoptOpts=(CATEGORIES[parent]||CATEGORIES.OUTERWEAR).adoptOpts,shoe=parent==='SHOES';
   const mk=(opts,set,cls)=>opts.map(o=>`<button class="togglepill ${cls} ${set.has(o)?'on':''}" data-pill="${cls}" data-val="${o}">${o}</button>`).join('');
   $('#keep-pills').innerHTML=mk(KEEP_OPTS,state.brief.keep,'keep');
   $('#replace-pills').innerHTML=mk(REPLACE_OPTS,state.brief.replace,'rep');
@@ -1702,7 +1734,7 @@ function renderShoeBal(){
   refreshBalEnds();
 }
 function applyCategory(reset){
-  const parent=$('#cat-parent').value,C=CATEGORIES[parent];
+  let parent=$('#cat-parent').value;if(!CATEGORIES[parent]){parent='OUTERWEAR';}const C=CATEGORIES[parent];
   $('#cat-sub').innerHTML=C.subs.map(s=>(parent==='TOP'&&s==='SWEATER'&&!canSweater())?`<option value="SWEATER" disabled>SWEATER (빌딩중)</option>`:`<option>${s}</option>`).join('');
   $('#cat-tag').textContent=`· ${C.noun} 기준`;
   const shoe=parent==='SHOES';
@@ -1718,7 +1750,7 @@ function applyCategory(reset){
   }
   if($('#balance-h')&&$('#balance')){const bv=+$('#balance').value;$('#balance-h').textContent=shoe?colorHintFor(bv):balanceHint(bv);}
   if(reset){state.brief.keep=new Set(C.keepDefault);state.brief.replace=new Set(C.replaceDefault);state.brief.adopt=new Set(C.adoptDefault);state.brief.fabricType='';state.aiAttrs={};}
-  renderPills();if(shoe)renderShoeBal();else refreshBalEnds();refreshKnitPanel();refreshJSON(true);
+  renderPills();if(shoe)renderShoeBal();else refreshBalEnds();refreshKnitPanel();refreshLenPanels();refreshJSON(true);
 }
 
 /* ---------- gallery ---------- */
@@ -2483,7 +2515,9 @@ function wire(){
   if($('#knit-gauge'))sync('knit-gauge','knit-gauge-v','knit-gauge-h',knitGaugeHint);
   if($('#knit-pat'))$('#knit-pat').addEventListener('input',()=>{$('#knit-pat-v').textContent=$('#knit-pat').value;refreshKnitPanel();refreshJSON();});
   if($('#knit-detail'))$('#knit-detail').addEventListener('change',()=>refreshJSON());
-  $('#balance-h').textContent=balanceHint(35);$('#sheer-h').textContent=sheerHint(20);$('#shimmer-h').textContent=shimmerHint(25);if($('#refmix-h'))$('#refmix-h').textContent=refmixHint(50);if($('#knit-gauge-h'))$('#knit-gauge-h').textContent=knitGaugeHint(45);
+  if($('#blen'))sync('blen','blen-v','blen-h',bottomLenHint);
+  if($('#tlen'))sync('tlen','tlen-v','tlen-h',topLenHint);
+  $('#balance-h').textContent=balanceHint(35);$('#sheer-h').textContent=sheerHint(20);$('#shimmer-h').textContent=shimmerHint(25);if($('#refmix-h'))$('#refmix-h').textContent=refmixHint(50);if($('#knit-gauge-h'))$('#knit-gauge-h').textContent=knitGaugeHint(45);if($('#blen-h'))$('#blen-h').textContent=bottomLenHint(80);if($('#tlen-h'))$('#tlen-h').textContent=topLenHint(55);
   $('#season').addEventListener('change',renderPicks);
   $('#cat-parent').addEventListener('change',()=>applyCategory(true));
   $('#cat-sub').addEventListener('change',()=>{refreshKnitPanel();refreshJSON();});
@@ -2500,7 +2534,9 @@ function wire(){
   $('#lightbox').addEventListener('click',()=>$('#lightbox').classList.remove('on'));
   $('#btn-savesettings').addEventListener('click',saveSettings);
   $('#btn-cloudtest').addEventListener('click',cloudTest);
-  const lo=$('#btn-logout');if(lo)lo.addEventListener('click',()=>{if(!confirm('로그아웃할까요? 이 기기의 로그인 정보가 지워집니다.'))return;try{localStorage.removeItem('mlb_session');sessionStorage.removeItem('mlb_session');localStorage.removeItem('mlb_auth_email');sessionStorage.removeItem('mlb_auth');}catch(e){}location.reload();});
+  const doLogout=()=>{if(!confirm('로그아웃할까요? 이 기기의 로그인 정보가 지워집니다.'))return;try{localStorage.removeItem('mlb_session');sessionStorage.removeItem('mlb_session');localStorage.removeItem('mlb_auth_email');sessionStorage.removeItem('mlb_auth');}catch(e){}location.reload();};
+  const lo=$('#btn-logout');if(lo)lo.addEventListener('click',doLogout);
+  const lo2=$('#btn-logout-top');if(lo2)lo2.addEventListener('click',doLogout);
   $('#btn-cloudmigrate').addEventListener('click',migrateToCloud);
   $('#btn-sales-apply').addEventListener('click',applySales);
   $('#btn-sales-clear').addEventListener('click',clearSales);
@@ -2548,7 +2584,7 @@ async function boot(){
     if(cloudMx&&cloudMx.mxGroups)state.mxGroups=cloudMx.mxGroups;
     if(!state.mxGroups||!Object.keys(state.mxGroups).length)loadMxGroupsLocal();
   }catch(e){}
-  fillSeasonSelects();wire();applyCategory(true);renderAll();loadSettingsUI();updateKeyDot();refreshJSON(true);
+  fillSeasonSelects();wire();applyCategory(true);applyAccess();renderAll();loadSettingsUI();updateKeyDot();refreshJSON(true);
   if(cloudOn())loadProducts();
 }
 /* ---------- Supabase Auth 로그인 (이메일+비밀번호) ---------- */
@@ -2575,7 +2611,9 @@ function galleryVisible(it){const o=(it&&it.owner||'').toLowerCase();const sw=(i
 function isSharedToMe(g){const o=(g&&g.owner||'').toLowerCase();const mine=o?o===authEmail:(authEmail===LEGACY_OWNER);return !mine && (g&&g.sharedWith||[]).map(x=>(x||'').toLowerCase()).includes(authEmail);}
 const SECRET_OWNER='jisoo07@fnfcorp.com'; // 시크릿 레퍼런스 저장소(소비자전략팀) 소유 계정
 function canSecret(){return authEmail===SECRET_OWNER;}
-const SWEATER_ALLOWED=['jisoo07@fnfcorp.com','jin@fnfcorp.com']; // SWEATER(니트) 기능 사용 허용 계정
+const CAT_ALLOWED=['jisoo07@fnfcorp.com','jin@fnfcorp.com']; // 카테고리 생성 사용 허용 계정(그 외 계정은 모든 카테고리 '진행중')
+function canUseCats(){return CAT_ALLOWED.includes((authEmail||'').toLowerCase());}
+const SWEATER_ALLOWED=[]; // SWEATER(니트)는 현재 전원 비허용 — 항목만 노출(빌딩중)
 function canSweater(){return SWEATER_ALLOWED.includes((authEmail||'').toLowerCase());}
 function refVisible(r){return !r||!r.secret||(r.owner||'').toLowerCase()===authEmail;} // 시크릿 레퍼는 소유자만
 async function tryRestore(){
