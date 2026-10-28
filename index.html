@@ -421,7 +421,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
         <div class="panel">
           <div class="row" style="gap:12px">
             <div style="flex:1"><label class="fld">타깃 시즌 (기획)</label><select id="season" class="inp"></select></div>
-            <div style="flex:1"><label class="fld">카테고리</label><select id="cat-parent" class="inp"><option>OUTERWEAR</option><option>TOP</option><option>BOTTOMS</option><option>SHOES</option></select></div>
+            <div style="flex:1"><label class="fld">카테고리</label><select id="cat-parent" class="inp"><option>OUTERWEAR</option><option>TOP</option><option>BOTTOMS</option><option>DRESS</option><option>SHOES</option></select></div>
             <div style="flex:1.2"><label class="fld">서브</label><select id="cat-sub" class="inp"></select></div>
           </div>
           <div class="sectlabel">1 · 베이스 라인 <span class="hint" style="margin:0;color:var(--ink-45)">(선택 — 없으면 레퍼런스만으로 생성)</span> <span id="prevlabel" class="chip pine"></span> <span class="hint" style="margin:0">— 모델·포즈·나머지 스타일링을 유지할 원본</span></div>
@@ -502,6 +502,12 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
             <div class="slider-head"><span class="lab">기장 · 상의 길이</span><span class="val" id="tlen-v">55</span></div>
             <input type="range" id="tlen" min="0" max="100" value="55">
             <div class="row" style="justify-content:space-between;margin-top:3px"><span class="slider-hint" style="margin:0">◀ 크롭</span><span class="slider-hint" id="tlen-h" style="margin:0;color:var(--pine);font-weight:600"></span><span class="slider-hint" style="margin:0">튜닉/롱 ▶</span></div>
+          </div>
+          <div class="slider-wrap" id="dlen-wrap" style="display:none;margin-top:14px">
+            <div class="slider-head"><span class="lab">기장 · 드레스 길이</span><span class="val" id="dlen-v">55</span></div>
+            <input type="range" id="dlen" min="0" max="100" value="55">
+            <div class="row" style="justify-content:space-between;margin-top:3px"><span class="slider-hint" style="margin:0">◀ 미니</span><span class="slider-hint" id="dlen-h" style="margin:0;color:var(--pine);font-weight:600"></span><span class="slider-hint" style="margin:0">맥시 ▶</span></div>
+            <div class="slider-hint" style="margin-top:4px;color:var(--ink-45)">서브에서 드레스 종류를 고르고, 이 바로 기장(미니~맥시)을 조절하세요.</div>
           </div>
 
           <div id="knit-wrap" style="display:none;margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.015)">
@@ -793,13 +799,21 @@ const CATEGORIES={
     schema:'{"silhouette":"","length":"","neckline":"","collar":"","sleeve":"","quilting":{"type":"","scale":"","puffiness":""},"waist":"","pocket":"","material":{"fabric_type":"","surface":"","finish":""}}',
     attrs:()=>({silhouette:'',length:'',neckline:'',collar:'',sleeve:'',quilting:{type:'',scale:'',puffiness:''},waist:'',pocket:'',material:matDefault()})},
   BOTTOMS:{noun:'bottoms',
-    subs:['SHORTS','BERMUDA SHORTS','CARGO SHORTS','STRAIGHT PANTS','WIDE PANTS','TAPERED PANTS','CARGO PANTS','LEGGINGS','JOGGER','SKIRT'],
+    subs:['SHORTS','BERMUDA SHORTS','CARGO SHORTS','STRAIGHT PANTS','WIDE PANTS','TAPERED PANTS','CARGO PANTS','LEGGINGS','JOGGER','A-LINE SKIRT','PLEATED SKIRT','PENCIL SKIRT','WRAP SKIRT','DENIM SKIRT'],
     keepDefault:['model identity','face','hair','pose','background','top','outerwear','footwear'],
     replaceDefault:['bottoms'],
     adoptDefault:['silhouette','leg shape','length'],
-    adoptOpts:['silhouette','rise','leg shape','length','waist','material surface','pockets','drawcord/string','belt','hardware'],
+    adoptOpts:['silhouette','rise','leg shape','length','waist','pleat/drape','material surface','pockets','drawcord/string','belt','hardware'],
     schema:'{"silhouette":"","rise":"","leg":"","length":"","waist":"","pocket":"","material":{"fabric_type":"","surface":"","finish":""}}',
     attrs:()=>({silhouette:'',rise:'',leg:'',length:'',waist:'',pocket:'',material:matDefault()})},
+  DRESS:{noun:'dress',
+    subs:['MINI DRESS','MIDI DRESS','MAXI DRESS','SHIRT DRESS','KNIT DRESS','SLIP DRESS','SHIRRED DRESS','PADDED DRESS'],
+    keepDefault:['model identity','face','hair','pose','background','outerwear','footwear'],
+    replaceDefault:['top','bottoms'],
+    adoptDefault:['silhouette','neckline','length'],
+    adoptOpts:['silhouette','neckline','collar','sleeve','length','waist','fit','pleat/drape','material surface','graphic','trim','drawcord/string','belt'],
+    schema:'{"silhouette":"","neckline":"","sleeve":"","length":"","waist":"","fit":"","material":{"fabric_type":"","surface":"","finish":""}}',
+    attrs:()=>({silhouette:'',neckline:'',sleeve:'',length:'',waist:'',fit:'',material:matDefault()})},
   TOP:{noun:'top',
     subs:['SWEATSHIRT','HOODIE','SWEATER','T-SHIRT','SHIRT','ZIP-UP','JERSEY'],
     keepDefault:['model identity','face','hair','pose','background','outerwear','bottoms','footwear'],
@@ -888,7 +902,9 @@ function bottomLenWord(v){v=+v;return v<15?'micro shorts length (upper-thigh, ve
 function bottomLenHint(v){v=+v;return v<15?'마이크로':v<30?'쇼츠':v<45?'버뮤다(무릎위)':v<58?'무릎':v<72?'미디/카프리':v<85?'앵클':'풀기장';}
 function topLenWord(v){v=+v;return v<20?'cropped length (hem ends above the waist, midriff-level)':v<45?'short length (hem at the waist)':v<65?'regular length (hem at the hip)':v<82?'longline length (hem below the hip)':'tunic / oversized long length (hem at mid-thigh)';}
 function topLenHint(v){v=+v;return v<20?'크롭':v<45?'숏(허리)':v<65?'레귤러(힙)':v<82?'롱(힙아래)':'튜닉/롱';}
-function refreshLenPanels(){const p=$('#cat-parent')&&$('#cat-parent').value;const bw=$('#blen-wrap'),tw=$('#tlen-wrap');if(bw)bw.style.display=(p==='BOTTOMS')?'block':'none';if(tw)tw.style.display=(p==='TOP')?'block':'none';}
+function dressLenWord(v){v=+v;return v<25?'mini dress length (hem well above the knee)':v<50?'above-knee short dress length':v<72?'midi dress length (hem at mid-calf)':'maxi dress length (hem at the lower calf / just above the ankle — about 10% shorter than full floor-length, clearly NOT dragging on the ground)';}
+function dressLenHint(v){v=+v;return v<25?'미니':v<50?'무릎위':v<72?'미디':'맥시';}
+function refreshLenPanels(){const p=$('#cat-parent')&&$('#cat-parent').value;const bw=$('#blen-wrap'),tw=$('#tlen-wrap'),dw=$('#dlen-wrap');if(bw)bw.style.display=(p==='BOTTOMS')?'block':'none';if(tw)tw.style.display=(p==='TOP')?'block':'none';if(dw)dw.style.display=(p==='DRESS')?'block':'none';}
 /* 로그인 계정 표시 + 카테고리 접근 제어(허용 계정 외 전 카테고리 '진행중') */
 function applyAccess(){
   const ok=canUseCats();
@@ -1006,6 +1022,7 @@ function buildDesignJSON(){
   g.material.shell_ref=!!plan.shell;
   if(parent==='BOTTOMS'){const v=+($('#blen')?$('#blen').value:80);g.length=bottomLenWord(v);g.len_pct=v;}
   if(parent==='TOP'){const v=+($('#tlen')?$('#tlen').value:55);g.length=topLenWord(v);g.len_pct=v;}
+  if(parent==='DRESS'){const v=+($('#dlen')?$('#dlen').value:55);g.length=dressLenWord(v);g.len_pct=v;}
   if(state.brief.fabricType)g.material.fabric_type=state.brief.fabricType;
   return{
     target_season:target, source_season:source,
@@ -1030,6 +1047,7 @@ function garmentParts(cat,g){
   add('silhouette');add('length');
   if(cat.parent==='OUTERWEAR'){add('neckline');add('collar');add('sleeve');const q=g.quilting||{};const qd=[q.type,q.scale&&q.scale+' scale',q.puffiness&&q.puffiness+' volume'].filter(Boolean).join(', ');if(qd)parts.push('quilting '+qd);}
   if(cat.parent==='BOTTOMS'){add('rise');add('leg','leg shape');}
+  if(cat.parent==='DRESS'){add('neckline');add('sleeve');add('fit');}
   if(cat.parent==='SHOES'){
     const so=g.sole||{};const sd=[so.height&&so.height+' height',so.unit].filter(Boolean).join(', ');if(sd)parts.push('sole '+sd);
     const up=g.upper||{};const ud=[up.material,up.construction].filter(Boolean).join(', ');if(ud)parts.push('upper '+ud);
@@ -1203,6 +1221,9 @@ async function doGenerate(){
           dataUrl:raw,logoUrl,sourceLineId:plan.line?plan.line.id:null,refIds:plan.refs.map(r=>r.id),modelId:plan.model?plan.model.id:null,fabricId:plan.shell?plan.shell.id:null,
           category:J.category,keep:J.keep,replace:J.replace,adopt:J.adopt_from_ref,team,shot:isShoeGen?'product':'look',
           sheer:+$('#sheer').value,shimmer:+$('#shimmer').value,balance:+$('#balance').value,
+          refMix:plan.refMix,refMixClause:plan.refMixClause||'',modelMode:plan.modelMode,refLed:!!plan.refLed,
+          refRoles:(plan.refs||[]).map(r=>({id:r.id,name:r.name,detail:!!r.detail,gallery:!!r._gallery})),
+          lineName:plan.line?plan.line.name:'',fabricName:plan.shell?plan.shell.name:'',
           designJSON:J,prompt:promptUsed,extra:J.notes,parentId:null,lifestyle:'',createdAt:Date.now()+items.length*7};
         state.gallery.push(g);await storePut('gallery',g);items.push(g);
       }
@@ -1749,7 +1770,12 @@ function applyCategory(reset){
     else{mbody.style.display='';mtog.style.display='none';}
   }
   if($('#balance-h')&&$('#balance')){const bv=+$('#balance').value;$('#balance-h').textContent=shoe?colorHintFor(bv):balanceHint(bv);}
-  if(reset){state.brief.keep=new Set(C.keepDefault);state.brief.replace=new Set(C.replaceDefault);state.brief.adopt=new Set(C.adoptDefault);state.brief.fabricType='';state.aiAttrs={};}
+  if(reset){state.brief.keep=new Set(C.keepDefault);state.brief.replace=new Set(C.replaceDefault);state.brief.adopt=new Set(C.adoptDefault);state.brief.fabricType='';state.aiAttrs={};
+    // 소재 질감: 아우터만 Sheer/Shimmer 기본값 유지, 그 외 카테고리는 0 기본
+    const shv=(parent==='OUTERWEAR')?20:0, smv=(parent==='OUTERWEAR')?25:0;
+    if($('#sheer')){$('#sheer').value=shv;if($('#sheer-v'))$('#sheer-v').textContent=shv;if($('#sheer-h'))$('#sheer-h').textContent=sheerHint(shv);}
+    if($('#shimmer')){$('#shimmer').value=smv;if($('#shimmer-v'))$('#shimmer-v').textContent=smv;if($('#shimmer-h'))$('#shimmer-h').textContent=shimmerHint(smv);}
+  }
   renderPills();if(shoe)renderShoeBal();else refreshBalEnds();refreshKnitPanel();refreshLenPanels();refreshJSON(true);
 }
 
@@ -1773,6 +1799,7 @@ async function classifyGalleryLifestyles(items){
 }
 async function classifyRefTags(it){
   if(!state.settings.apiKey)return;
+  if((it.gcat||'').toUpperCase()!=='SHOES')return; // 슈즈 레퍼만 자동분류
   try{
     const txt=await openaiVision([{role:'user',content:[
       {type:'text',text:`This is a footwear/shoe design reference. Return ONLY a JSON object, no prose, no code fence. Pick the single best value for each field.\nshoeType — EXACTLY one of: ${SHOE_TYPES.join(', ')} (LINER=thin low-profile slip-on/mary-jane/ballet type, CHUNKY=heavy oversized sole dad shoe, RUNNER=retro running silhouette, SNEAKERS=classic court/low sneaker, SUMMER=breathable/sandal/mesh warm-weather, WINTER=boot/insulated cold-weather).\nlifestyle — EXACTLY one of: ${LIFE_SHOES.join(', ')}.\nSchema: {"shoeType":"","lifestyle":""}`},
@@ -1987,6 +2014,24 @@ function renderCompare(gid){
   const g=state.gallery.find(x=>x.id===gid),line=state.lines.find(l=>l.id===g.sourceLineId);
   const refNames=(g.refIds||[]).map(id=>{const r=state.refs.find(x=>x.id===id);return r?r.name:'(삭제됨)';});
   const cat=g.category?`${g.category.parent} / ${g.category.sub}`:'—';
+  const J=g.designJSON||{},gm=J.garment||{};
+  const bal=(g.balance!=null)?g.balance:(J.design_balance!=null?Math.round(J.design_balance*100):35);
+  const hasLine=!!(g.sourceLineId||g.lineName);
+  const roleList=(g.refRoles&&g.refRoles.length)?g.refRoles:refNames.map(n=>({name:n,detail:false,gallery:false}));
+  const designRefCnt=roleList.filter(r=>!r.detail).length;const two=designRefCnt>=2;
+  // 밸런스 해석(무엇을 몇 % 섞었나)
+  let balText = hasLine?`MLB 라인 ${100-bal}% · 레퍼런스 ${bal}%` : (two?`1번 레퍼 ${100-bal}% · 2번 레퍼 ${bal}%`:`MLB DNA ${100-bal}% · 레퍼런스 ${bal}%`);
+  // 믹스 소스
+  const srcParts=[];
+  srcParts.push(hasLine?`🧩 베이스 라인: <b>${esc(g.lineName||(line?line.name:'라인'))}</b>`:`🧩 베이스: <b>레퍼런스 기반(라인 없음)</b>`);
+  if(roleList.length)srcParts.push('🖼 레퍼런스: '+roleList.map(r=>`${esc(r.name||'(삭제)')}${r.detail?' <span style="color:var(--ink-45)">(디테일)</span>':r.gallery?' <span style="color:var(--ink-45)">(기존 생성물)</span>':''}`).join(', '));
+  if(g.fabricName)srcParts.push(`🧵 소재 스와치: <b>${esc(g.fabricName)}</b>`);
+  // 레퍼믹스 / 기장 / 니트 / 소재
+  const refMixText=(two&&g.refMix!=null)?`1번 ${100-g.refMix}% · 2번 ${g.refMix}% <span style="color:var(--ink-45)">(${refmixHint(g.refMix)})</span>`:'';
+  const lenText=gm.length?esc(gm.length):'';
+  const K=J.knit;const knitText=K?`게이지 ${K.gauge}/100 · 패턴 ${K.pattern}/100${K.detailShot?' · 조직샷 포함':''}`:'';
+  const fabType=(gm.material&&gm.material.fabric_type)||'';
+  const modeMap={idol:'모델 생성',image:'기존 모델에 착장',preserve:'원본 유지 편집',product:'제품컷(무모델)'};
   box.innerHTML=`
     <div class="cmp">
       <div><div class="caphead"><span class="t">${line?esc(line.name):'원본 없음'}</span><span class="s">${line?esc(line.season):''} · Source</span></div>
@@ -1994,15 +2039,23 @@ function renderCompare(gid){
       <div><div class="caphead"><span class="t">${esc(g.name)}</span><span class="s">${esc(g.season)} · Generated</span></div>
         <div class="frame"><img src="${g.logoUrl||g.dataUrl}"></div></div>
     </div>
+    <div class="promptbox" style="max-height:none;color:var(--ink);margin-bottom:12px;line-height:1.7">
+      <div style="font-weight:700;margin-bottom:6px">🔀 믹스 구성 — 무엇을 어떻게 섞었나</div>
+      ${srcParts.join('<br>')}
+      <br>⚖ 디자인 밸런스: <b>${bal}/100</b> → ${balText}
+      ${refMixText?`<br>🔁 레퍼런스 믹스: ${refMixText}`:''}
+      ${lenText?`<br>📏 기장: ${lenText}`:''}
+      ${knitText?`<br>🧶 니트: ${knitText}`:''}
+      ${g.modelMode?`<br>🧍 생성 방식: ${modeMap[g.modelMode]||g.modelMode}${g.refLed?' · 레퍼 주도':''}`:''}
+    </div>
     <table class="difftable">
       <tr><td>시즌</td><td>${line?esc(line.season)+' → ':''}<b>${esc(g.season)}</b></td></tr>
       <tr><td>카테고리</td><td>${esc(cat)}</td></tr>
       <tr><td>유지 KEEP</td><td>${(g.keep||[]).map(k=>`<span class="chip">${esc(k)}</span>`).join('')||'—'}</td></tr>
       <tr><td>교체 REPLACE</td><td>${(g.replace||[]).map(k=>`<span class="chip">${esc(k)}</span>`).join('')||'—'}</td></tr>
       <tr><td>채용 ADOPT</td><td>${(g.adopt||[]).map(k=>`<span class="chip">${esc(k)}</span>`).join('')||'—'}</td></tr>
-      <tr><td>소재</td><td>Sheer ${g.sheer} · Shimmer ${g.shimmer} <span style="color:var(--ink-45)">(${sheerHint(g.sheer)}/${shimmerHint(g.shimmer)})</span></td></tr>
-      <tr><td>디자인 밸런스</td><td>${g.balance!=null?g.balance:35}/100 <span style="color:var(--ink-45)">(${balanceHint(g.balance!=null?g.balance:35)})</span></td></tr>
-      <tr><td>레퍼런스</td><td>${refNames.length?refNames.map(n=>`<span class="chip">${esc(n)}</span>`).join(''):'—'}</td></tr>
+      <tr><td>소재</td><td>${fabType?esc(fabType)+' · ':''}Sheer ${g.sheer} · Shimmer ${g.shimmer} <span style="color:var(--ink-45)">(${sheerHint(g.sheer)}/${shimmerHint(g.shimmer)})</span></td></tr>
+      <tr><td>레퍼런스</td><td>${roleList.length?roleList.map(r=>`<span class="chip">${esc(r.name||'(삭제)')}</span>`).join(''):'—'}</td></tr>
     </table>
     <div class="row" style="margin-top:14px"><button class="btn sm" id="cmp-ai">AI 차이 설명 생성</button><button class="btn sm ghost" id="cmp-json">분석 JSON 보기</button></div>
     <div id="cmp-ai-out" style="margin-top:10px"></div><div id="cmp-json-out" style="margin-top:10px"></div>`;
@@ -2351,7 +2404,7 @@ async function handleFiles(files,store){
     if(store==='fabrics')it.ftype='';
     state[store].push(it);await storePut(store,it);}
   libGrid(store);refreshCounts();renderPicks();
-  if(store==='refs')classifyRefsTags(state.refs.filter(r=>!r.shoeType||!r.lifestyle));
+  if(store==='refs')classifyRefsTags(state.refs.filter(r=>(r.gcat||'').toUpperCase()==='SHOES'&&(!r.shoeType||!r.lifestyle)));
   const pre=(pg||pc||ps)?` · 지정(${[pg,pc,ps].filter(Boolean).join('/')})`:'';
   toast(`${arr.length}장 추가${parsed?` · ${parsed}장 자동인식`:''}${pre}`);
 }
@@ -2497,7 +2550,7 @@ function wire(){
     const pr=e.target.closest('#prod-reload');if(pr){loadProducts(true);return;}
     const wc=e.target.closest('[data-wctag]');if(wc){const t=wc.dataset.wctag;state.tagFilter=(state.tagFilter===t)?'':t;libGrid('refs');return;}
     const rv=e.target.closest('[data-refview]');if(rv){setRefView(rv.dataset.refview);return;}
-    const ac=e.target.closest('#ref-autoclass');if(ac){classifyRefsTags(state.refs.filter(r=>!r.shoeType||!r.lifestyle));return;}
+    const ac=e.target.closest('#ref-autoclass');if(ac){classifyRefsTags(state.refs.filter(r=>(r.gcat||'').toUpperCase()==='SHOES'&&(!r.shoeType||!r.lifestyle)));return;}
     if(e.target.id==='model-toggle'){const mb=$('#model-body'),open=mb.style.display!=='none';mb.style.display=open?'none':'';e.target.textContent=open?'— 펼치기 (신발은 선택 불필요)':'— 접기';return;}
     const mga=e.target.closest('[data-mxgadd]');if(mga){const key=mga.dataset.mxgadd;const nm=prompt('새 열(그룹) 이름');if(!nm||!nm.trim())return;(state.mxGroups[key]=state.mxGroups[key]||[]).push({id:uid(),name:nm.trim(),ids:[]});saveMxGroups();renderRefMatrix();return;}
     const mgr=e.target.closest('[data-mxgren],[data-mxgname]');if(mgr){const gid=mgr.dataset.mxgren||mgr.dataset.mxgname;const key=state.mxSel.st+'|'+state.mxSel.lf;const g=(state.mxGroups[key]||[]).find(x=>x.id===gid);if(!g)return;const nm=prompt('열 이름 변경',g.name);if(!nm||!nm.trim())return;g.name=nm.trim();saveMxGroups();renderRefMatrix();return;}
@@ -2517,7 +2570,8 @@ function wire(){
   if($('#knit-detail'))$('#knit-detail').addEventListener('change',()=>refreshJSON());
   if($('#blen'))sync('blen','blen-v','blen-h',bottomLenHint);
   if($('#tlen'))sync('tlen','tlen-v','tlen-h',topLenHint);
-  $('#balance-h').textContent=balanceHint(35);$('#sheer-h').textContent=sheerHint(20);$('#shimmer-h').textContent=shimmerHint(25);if($('#refmix-h'))$('#refmix-h').textContent=refmixHint(50);if($('#knit-gauge-h'))$('#knit-gauge-h').textContent=knitGaugeHint(45);if($('#blen-h'))$('#blen-h').textContent=bottomLenHint(80);if($('#tlen-h'))$('#tlen-h').textContent=topLenHint(55);
+  if($('#dlen'))sync('dlen','dlen-v','dlen-h',dressLenHint);
+  $('#balance-h').textContent=balanceHint(35);$('#sheer-h').textContent=sheerHint(20);$('#shimmer-h').textContent=shimmerHint(25);if($('#refmix-h'))$('#refmix-h').textContent=refmixHint(50);if($('#knit-gauge-h'))$('#knit-gauge-h').textContent=knitGaugeHint(45);if($('#blen-h'))$('#blen-h').textContent=bottomLenHint(80);if($('#tlen-h'))$('#tlen-h').textContent=topLenHint(55);if($('#dlen-h'))$('#dlen-h').textContent=dressLenHint(55);
   $('#season').addEventListener('change',renderPicks);
   $('#cat-parent').addEventListener('change',()=>applyCategory(true));
   $('#cat-sub').addEventListener('change',()=>{refreshKnitPanel();refreshJSON();});
@@ -2613,7 +2667,7 @@ const SECRET_OWNER='jisoo07@fnfcorp.com'; // 시크릿 레퍼런스 저장소(�
 function canSecret(){return authEmail===SECRET_OWNER;}
 const CAT_ALLOWED=['jisoo07@fnfcorp.com','jin@fnfcorp.com']; // 카테고리 생성 사용 허용 계정(그 외 계정은 모든 카테고리 '진행중')
 function canUseCats(){return CAT_ALLOWED.includes((authEmail||'').toLowerCase());}
-const SWEATER_ALLOWED=[]; // SWEATER(니트)는 현재 전원 비허용 — 항목만 노출(빌딩중)
+const SWEATER_ALLOWED=['jisoo07@fnfcorp.com']; // SWEATER(니트)는 jisoo07만 사용, 그 외 계정은 항목만 노출(빌딩중)
 function canSweater(){return SWEATER_ALLOWED.includes((authEmail||'').toLowerCase());}
 function refVisible(r){return !r||!r.secret||(r.owner||'').toLowerCase()===authEmail;} // 시크릿 레퍼는 소유자만
 async function tryRestore(){
