@@ -498,6 +498,23 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
             <input type="range" id="shimmer" min="0" max="100" value="25"><div class="slider-hint" id="shimmer-h"></div>
           </div>
 
+          <div id="knit-wrap" style="display:none;margin-top:16px;padding:12px;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.015)">
+            <div class="sectlabel" style="margin:0 0 4px">🧶 스웨터 니트 디테일</div>
+            <div class="hint" style="margin:0 0 10px">SWEATER 선택 시에만 표시 · 짜임/패턴을 조절하고 생성물과 짠 조직을 한 장에 함께 출력합니다.</div>
+            <div class="slider-wrap" style="margin-top:4px">
+              <div class="slider-head"><span class="lab">짜임 게이지</span><span class="val" id="knit-gauge-v">45</span></div>
+              <input type="range" id="knit-gauge" min="0" max="100" value="45">
+              <div class="row" style="justify-content:space-between;margin-top:3px"><span class="slider-hint" style="margin:0">◀ 파인(얇게)</span><span class="slider-hint" id="knit-gauge-h" style="margin:0;color:var(--pine);font-weight:600"></span><span class="slider-hint" style="margin:0">청키(굵게) ▶</span></div>
+            </div>
+            <div class="slider-wrap" id="knit-pat-wrap" style="display:none">
+              <div class="slider-head"><span class="lab">패턴 믹스</span><span class="val" id="knit-pat-v">50</span></div>
+              <input type="range" id="knit-pat" min="0" max="100" value="50">
+              <div class="row" style="justify-content:space-between;margin-top:3px"><span class="slider-hint" id="knit-pat-l" style="margin:0">◀ 레퍼 패턴</span><span class="slider-hint" id="knit-pat-h" style="margin:0;color:var(--pine);font-weight:600"></span><span class="slider-hint" id="knit-pat-r" style="margin:0">새 패턴 ▶</span></div>
+            </div>
+            <div class="hint" id="knit-pat-note" style="margin:6px 0 0">패턴 믹스는 레퍼런스를 1장 이상 선택하면 활성화됩니다. (2장이면 1번↔새패턴↔2번)</div>
+            <label class="row" style="font-size:12px;color:var(--ink-70);gap:6px;margin:10px 0 0"><input type="checkbox" id="knit-detail" checked> 생성물 + 짠 조직 매크로샷 한 장에 함께 출력</label>
+          </div>
+
           <div style="margin-top:16px"><label class="fld">추가 디렉션 (선택)</label>
             <textarea id="extra" class="inp" placeholder="예: 벨티드 실루엣, 페이크퍼 트리밍, 딥 버건디 컬러웨이…"></textarea></div>
 
@@ -702,9 +719,6 @@ async function supaPutRow(table,row){
 }
 async function supaDelete(table,id){const c=supaCfg();const T=tbl(table);const r=await fetch(`${c.url}/rest/v1/${T}?id=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:{apikey:c.key,Authorization:`Bearer ${c.key}`,Prefer:'return=minimal'}});if(!r.ok)throw new Error(`delete ${T} ${r.status}`);}
 async function supaUpload(path,blob){const c=supaCfg();const r=await fetch(`${c.url}/storage/v1/object/${c.bucket}/${path}`,{method:'POST',headers:{apikey:c.key,Authorization:`Bearer ${c.key}`,'Content-Type':blob.type||'image/png','x-upsert':'true'},body:blob});if(!r.ok)throw new Error(`upload ${r.status} ${await r.text()}`);return `${c.url}/storage/v1/object/public/${c.bucket}/${path}`;}
-function thumb(u,w){ if(!u||typeof u!=='string')return u;
-  var i=u.indexOf('/storage/v1/object/public/'); if(i<0)return u;   // Supabase Storage 파일만(그 외 data:/외부는 그대로)
-  return u.slice(0,i)+'/storage/v1/render/image/public/'+u.slice(i+'/storage/v1/object/public/'.length)+(u.indexOf('?')<0?'?':'&')+'width='+(w||400)+'&quality=55&resize=contain'; }
 async function uploadImages(store,item){
   const it=Object.assign({},item);
   const up=async(du,tag)=>{if(!du||!/^data:/.test(du))return du;return await supaUpload(`${store}/${item.id}_${tag}.png`,dataUrlToBlob(du));};
@@ -758,7 +772,7 @@ const CATEGORIES={
     schema:'{"silhouette":"","rise":"","leg":"","length":"","waist":"","pocket":"","material":{"fabric_type":"","surface":"","finish":""}}',
     attrs:()=>({silhouette:'',rise:'',leg:'',length:'',waist:'',pocket:'',material:matDefault()})},
   TOP:{noun:'top',
-    subs:['SWEATSHIRT','HOODIE','KNIT','T-SHIRT','SHIRT','ZIP-UP','JERSEY'],
+    subs:['SWEATSHIRT','HOODIE','SWEATER','T-SHIRT','SHIRT','ZIP-UP','JERSEY'],
     keepDefault:['model identity','face','hair','pose','background','outerwear','bottoms','footwear'],
     replaceDefault:['top'],
     adoptDefault:['silhouette','neckline','graphic'],
@@ -832,6 +846,14 @@ function balanceText(b){b=+b;return b<20?'Stay very close to the SOURCE garment:
 function sheerHint(v){v=+v;return v<12?'불투명':v<38?'부분 시스루':v<68?'반투명':'강한 시스루';}
 function shimmerHint(v){v=+v;return v<12?'매트':v<38?'새틴 광':v<68?'글로시':'하이글로스';}
 function balanceHint(b){b=+b;return b<20?'원형 강하게 유지':b<45?'라인 우선':b<70?'균형':'레퍼런스 주도';}
+/* ----- KNIT / SWEATER ----- */
+function knitGaugeWord(v){v=+v;return v<20?'a very fine, tight-gauge knit (thin yarn, smooth jersey/merino-like surface, almost no visible stitch relief)':v<45?'a fine-to-mid gauge knit with a smooth refined surface and subtle, even visible stitches':v<70?'a classic mid-gauge knit sweater with clearly visible even stitches and soft surface relief':v<88?'a chunky, heavier-gauge knit with thick yarn and pronounced raised stitches (rib/cable reads strongly)':'a very chunky, bulky hand-knit look — thick lofty yarn, deep stitch relief and prominent cable/rib texture';}
+function knitGaugeHint(v){v=+v;return v<20?'파인(얇은짜임)':v<45?'세미파인':v<70?'미드게이지':v<88?'청키':'벌키(굵은짜임)';}
+function knitPatHint(v,two){v=+v;if(two)return v<18?'1번 패턴':v<40?'1번 우선':v<=60?'새 패턴(블렌드)':v<82?'2번 우선':'2번 패턴';return v<30?'레퍼 패턴':v<=60?'변형':'새 패턴';}
+function knitPatWord2(v,aN,bN){v=+v;if(v<18)return `Use the knit PATTERN / jacquard motif of the FIRST reference (${aN}) almost exactly — same motif, scale, repeat and color placement, knitted into the yarn (not printed).`;if(v<40)return `Lead the knit pattern with the FIRST reference (${aN}); borrow only minor motif accents from the second (${bN}).`;if(v<=60)return `Create a NEW knit pattern by blending the motifs, scale and colorways of BOTH references (${aN} + ${bN}) into one original jacquard — it must read as a fresh motif, not a copy of either.`;if(v<82)return `Lead the knit pattern with the SECOND reference (${bN}); borrow only minor motif accents from the first (${aN}).`;return `Use the knit PATTERN / jacquard motif of the SECOND reference (${bN}) almost exactly — same motif, scale, repeat and color placement, knitted into the yarn (not printed).`;}
+function knitPatWord1(v,aN){v=+v;if(v<30)return `Reproduce the knit PATTERN / motif of the reference (${aN}) closely — same motif, scale and colorway, knitted into the yarn (not printed).`;if(v<=60)return `Base the knit pattern on the reference (${aN}) but re-work the scale and spacing into a fresh variation.`;return `Design a NEW original knit pattern / jacquard inspired by the reference (${aN}) — keep its mood and palette but a clearly new motif.`;}
+function isSweater(){return $('#cat-parent')&&$('#cat-parent').value==='TOP'&&$('#cat-sub')&&$('#cat-sub').value==='SWEATER';}
+function refreshKnitPanel(){const wrap=$('#knit-wrap');if(!wrap)return;const sw=isSweater();wrap.style.display=sw?'block':'none';if(!sw)return;const rN=pickedRefs().filter(r=>!r.detail),two=rN.length>=2,any=rN.length>=1;const pv=+($('#knit-pat')?$('#knit-pat').value:50);if($('#knit-pat-h'))$('#knit-pat-h').textContent=any?knitPatHint(pv,two):'자동 패턴';const l=$('#knit-pat-l'),r=$('#knit-pat-r');if(l&&r){if(two){l.textContent='◀ 레퍼1 패턴';r.textContent='레퍼2 패턴 ▶';}else{l.textContent='◀ 레퍼 패턴';r.textContent='새 패턴 ▶';}}const pr=$('#knit-pat-wrap');if(pr)pr.style.display=any?'block':'none';const note=$('#knit-pat-note');if(note)note.style.display=any?'none':'block';}
 function srWord(v){return v<=0?null:v<=33?'lightly':v<=66?'moderately':'strongly';}
 function balWord(v){v=+v;return v<20?'taken EXACTLY from the MLB base line — reproduce this part identically (same shape, proportions and construction) with essentially NO reference influence':v<45?'leaning toward the MLB base line, with the reference lightly informing the details':v<70?'an EQUAL 50/50 blend — VISIBLY and clearly adopt the reference shape and structure for this part (not a faint hint); it must read as much from the reference as from the MLB base line':v<90?'driven MAINLY by the reference for shape and structure; the MLB base line only contributes brand quality and proportion':'taken EXACTLY from the reference — reproduce the reference for this part identically, with essentially NO MLB base-line influence';}
 function colorBalWord(v){v=+v;return v<20?'the colorway is the MLB base line colors exactly — same colors and color blocking as the MLB line':v<40?'an MLB-similar tone — stay in the MLB base line color family, with only a slight refined variation':v<60?'a NEW colorway — propose a fresh, season-appropriate color story that is NOT copied from the MLB line nor the reference (a new original palette for this product)':v<80?'a reference-similar tone — stay in the REFERENCE color family, with only a slight variation':'the REFERENCE colors exactly — match the reference image color, tones and color blocking';}
@@ -946,6 +968,7 @@ function buildDesignJSON(){
     keep:[...state.brief.keep], replace:[...state.brief.replace], adopt_from_ref:[...state.brief.adopt],
     shoe_balance:(parent==='SHOES'?{...state.brief.shoeBal,color:+($('#balance')?$('#balance').value:50)}:null),
     garment:g,
+    knit:((parent==='TOP'&&sub==='SWEATER')?{gauge:+($('#knit-gauge')?$('#knit-gauge').value:45),pattern:+($('#knit-pat')?$('#knit-pat').value:50),detailShot:($('#knit-detail')?$('#knit-detail').checked:true)}:null),
     design_balance:(parent==='SHOES'?null:+$('#balance').value/100),
     branding:{brand:'MLB',logo:'small refined rectangular chest logo',logo_position:'upper left chest',logo_scale:'subtle'},
     priority:{model:plan.model?'model reference':'base image',garment_structure:'reference image',brand_rules:'MLB DNA'},
@@ -1013,6 +1036,16 @@ function jsonToPrompt(J,plan){
   if(md.length)S.push(`MATERIAL — ${md.join('; ')}.`);
   if(J.design_balance!=null)S.push(`DESIGN BALANCE — ${balanceText(J.design_balance*100)}`);
   if(plan&&plan.refMixClause)S.push(plan.refMixClause);
+  const K=J.knit;
+  if(K){
+    const rN=(plan&&plan.refs?plan.refs:[]).filter(r=>r&&!r.detail);
+    const aN=(rN[0]&&rN[0].name)||'reference 1',bN=(rN[1]&&rN[1].name)||'reference 2';
+    S.push(`KNIT CONSTRUCTION — this ${noun} is a real knitted SWEATER (pullover knitwear): render it as ${knitGaugeWord(K.gauge)}. Show genuine knitwear structure — visible knit loops and ribbed cuffs, hem and collar — not a printed or woven flat fabric.`);
+    if(rN.length>=2)S.push('KNIT PATTERN — '+knitPatWord2(K.pattern,aN,bN));
+    else if(rN.length===1)S.push('KNIT PATTERN — '+knitPatWord1(K.pattern,aN));
+    else S.push('KNIT PATTERN — design an original MLB knit pattern suited to the season and colorway, knitted into the yarn (not printed).');
+    if(K.detailShot)S.push(`KNIT COMPOSITION — Compose the output as ONE single image: the main hero shot (the ${noun} as described above) occupies most of the frame, PLUS one smaller inset panel in a lower corner showing a tight MACRO close-up of the ACTUAL knit fabric — the real stitch organization (visible knit loops, rib, gauge${rN.length?' and the pattern motif':''}) in the SAME colorway and yarn as the sweater, with consistent studio lighting. The inset must read as a genuine fabric swatch photographed up close, clearly revealing how the knit is constructed. Do not add any text, number or label to the inset.`);
+  }
   const b=J.branding||{};
   if((cat.parent||'')!=='SHOES')S.push(`BRANDING — the garment surface must be COMPLETELY BLANK: no brand logo, no lettering, no woven label, no rubber patch, no emblem anywhere on the chest, sleeve, hood or body. Do NOT render any "MLB" text or any logo-like mark. The brand logo is composited separately in post-production, so keep every surface clean and unbranded.`);
   if(J.notes)S.push(`ADDITIONAL — ${J.notes}.`);
@@ -1228,7 +1261,7 @@ function libGrid(store){
     const rk=rankHTML(it);
     if(it._product){ // 외부 PRODUCT: 읽기전용(삭제·선택·편집 없음), URL 이미지
       const meta=[it.brand,it.gender,it.shoeType,it.season].filter(Boolean).join(' · ');
-      return`<div class="card ${trend?'trend':''} ro" data-ro="1">${trendBadge}<img class="pthumb" loading="lazy" src="${esc(thumb(it.dataUrl,400))}" alt="" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name)}</div><div class="tg">${esc(meta)}</div>${htags}${rk}</div></div>`;
+      return`<div class="card ${trend?'trend':''} ro" data-ro="1">${trendBadge}<img class="pthumb" loading="lazy" src="${esc(it.dataUrl||'')}" alt="" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name)}</div><div class="tg">${esc(meta)}</div>${htags}${rk}</div></div>`;
     }
     return`<div class="card ${sw} ${on?'picked':''} ${trend?'trend':''}" data-id="${it.id}" data-store="${store}">${trendBadge}${rb}${selbox}<button class="x" data-del="${it.id}" data-store="${store}">✕</button><span class="thumb" style="background-image:url('${it.dataUrl}')"></span><div class="meta"><div class="nm">${esc(it.name)}</div><div class="tg">${esc(metaLine(store,it))}</div>${htags}${rk}${sa}</div></div>`;
   }).join('');
@@ -1363,7 +1396,7 @@ function renderGroups(){
   box.innerHTML=saveBar+groups.slice().sort((a,b)=>b.createdAt-a.createdAt).map(g=>{
     const items=g.ids.map(refById).filter(Boolean);
     const expanded=state.grpExpanded.has(g.id);
-    const cardHTML=(it,hidden)=>`<div class="card ro grpcard${hidden?' grphidden':''}" data-ro="1"><button class="x" data-grpdel="${g.id}" data-gitem="${it.id}" title="그룹에서 빼기">✕</button><img class="pthumb" loading="lazy" src="${esc(thumb(it.dataUrl,400))}" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name||'')}</div></div></div>`;
+    const cardHTML=(it,hidden)=>`<div class="card ro grpcard${hidden?' grphidden':''}" data-ro="1"><button class="x" data-grpdel="${g.id}" data-gitem="${it.id}" title="그룹에서 빼기">✕</button><img class="pthumb" loading="lazy" src="${esc(it.dataUrl||'')}" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name||'')}</div></div></div>`;
     const cards=items.map((it,i)=>cardHTML(it,!expanded&&i>=7)).join('');
     const restN=Math.max(0,items.length-7);
     const more=(restN&&!expanded)?`<button class="btn xs grpmore-btn" data-grpmorebtn="${g.id}" style="margin-top:8px">＋ 더보기 (${restN})</button>`:'';
@@ -1483,7 +1516,7 @@ function renderProducts(){
     const tb=trendActive(it)?`<span class="trend-badge">TREND</span>`:'';
     const unc=(!it.shoeType||!it.lifestyle)?`<span class="unclass">미분류</span>`:'';
     const htags=(it.hashtags&&it.hashtags.length)?`<div class="htags">${it.hashtags.slice(0,5).map(t=>`<span class="htag">#${esc(t)}</span>`).join('')}</div>`:'';
-    return`<div class="card ${on?'picked':''} ${trendActive(it)?'trend':''}" data-id="${it.id}" data-store="refs">${tb}${unc}${selbox}<button class="x" data-del="${it.id}" data-store="refs">✕</button><img class="pthumb" loading="lazy" src="${esc(thumb(it.dataUrl,400))}" alt="" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name)}</div><div class="tg">${esc(metaLine('refs',it))}</div>${htags}${rankHTML(it)}</div></div>`;
+    return`<div class="card ${on?'picked':''} ${trendActive(it)?'trend':''}" data-id="${it.id}" data-store="refs">${tb}${unc}${selbox}<button class="x" data-del="${it.id}" data-store="refs">✕</button><img class="pthumb" loading="lazy" src="${esc(it.dataUrl||'')}" alt="" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(it.name)}</div><div class="tg">${esc(metaLine('refs',it))}</div>${htags}${rankHTML(it)}</div></div>`;
   }).join('');
   const prodCards=prods.slice(0,showN).map(p=>{
     const sw=p.top_hex?`<span style="display:inline-block;width:11px;height:11px;border-radius:3px;border:1px solid var(--line);background:${esc(p.top_hex)};vertical-align:middle;margin-right:4px"></span>`:'';
@@ -1495,7 +1528,7 @@ function renderProducts(){
     const selbox=selMode?`<span class="selbox ${on?'on':''}">${on?'✓':''}</span>`:'';
     const htags=(p.hashtags&&p.hashtags.length)?`<div class="htags">${p.hashtags.slice(0,5).map(t=>`<span class="htag">#${esc(t)}</span>`).join('')}</div>`:'';
     const prk=(p.rank)?`<div class="rankline">📈 ${esc(((p.rank_date||'').trim()||'')+((p.rank_date||'').trim()?', ':'')+p.rank)}</div>`:'';
-    return`<div class="card ${p.is_trend?'trend':''} ro ${on?'picked':''}" data-ro="1" data-id="${pid}" data-pid="${esc(String(p.id))}">${tb}${num}${unc}${selbox}<button class="btn xs pzoom" data-zoom="${esc(p.image_url||'')}" title="크게 보기">⤢</button><button class="btn xs pclass" data-pclass="${esc(String(p.id))}">분류</button><button class="x pdel" data-pdel="${esc(String(p.id))}" title="상품 삭제">✕</button><img class="pthumb" loading="lazy" src="${esc(thumb(p.image_url,400))}" alt="" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(p.product_name||'-')}</div><div class="tg">${sw}${esc(meta)}</div>${htags}${prk}</div></div>`;
+    return`<div class="card ${p.is_trend?'trend':''} ro ${on?'picked':''}" data-ro="1" data-id="${pid}" data-pid="${esc(String(p.id))}">${tb}${num}${unc}${selbox}<button class="btn xs pzoom" data-zoom="${esc(p.image_url||'')}" title="크게 보기">⤢</button><button class="btn xs pclass" data-pclass="${esc(String(p.id))}">분류</button><button class="x pdel" data-pdel="${esc(String(p.id))}" title="상품 삭제">✕</button><img class="pthumb" loading="lazy" src="${esc(p.image_url||'')}" alt="" onerror="this.style.opacity=.25"><div class="meta"><div class="nm">${esc(p.product_name||'-')}</div><div class="tg">${sw}${esc(meta)}</div>${htags}${prk}</div></div>`;
   }).join('');
   const remain=prods.length-showN;
   const moreBtn=remain>0?`<div style="grid-column:1/-1;text-align:center;margin-top:12px"><button class="btn" id="prod-more">＋ 더보기 (남은 ${remain}개 전체 보기)</button></div>`:'';
@@ -1521,6 +1554,7 @@ function renderPicks(){
   $('#prevlabel').textContent=src?`${src} 라인`:'시즌 확인';
   renderPickBar('lines');renderPickBar('refs');pickGrid('models');pickGrid('fabrics');
   const rw=$('#refmix-wrap');if(rw)rw.style.display=(state.pick.refs.size>=2)?'block':'none';
+  refreshKnitPanel();
   refreshBalEnds();
   refreshJSON();
 }
@@ -1654,7 +1688,7 @@ function applyCategory(reset){
   }
   if($('#balance-h')&&$('#balance')){const bv=+$('#balance').value;$('#balance-h').textContent=shoe?colorHintFor(bv):balanceHint(bv);}
   if(reset){state.brief.keep=new Set(C.keepDefault);state.brief.replace=new Set(C.replaceDefault);state.brief.adopt=new Set(C.adoptDefault);state.brief.fabricType='';state.aiAttrs={};}
-  renderPills();if(shoe)renderShoeBal();refreshJSON(true);
+  renderPills();if(shoe)renderShoeBal();refreshKnitPanel();refreshJSON(true);
 }
 
 /* ---------- gallery ---------- */
@@ -1821,7 +1855,7 @@ function matrixAnalysis(tagged,total,cell){
   // ── 트렌드 스타일 상위 6 + 더보기 슬라이드 ──
   if(trendItems.length){
     const sorted=trendItems.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-    const card=it=>`<div class="tcard" data-zoom="${esc(it.dataUrl||'')}"><img src="${esc(thumb(it.dataUrl,400))}" loading="lazy" onerror="this.style.opacity=.25"><div class="tcname">${esc(it.name||'')}</div><div class="tcsub">${esc([it.shoeType,LIFE_SHORT[it.lifestyle]||''].filter(Boolean).join(' · '))}</div>${rankLine(it)?`<div class="tcrank">📈 ${esc(rankLine(it))}</div>`:''}</div>`;
+    const card=it=>`<div class="tcard" data-zoom="${esc(it.dataUrl||'')}"><img src="${esc(it.dataUrl||'')}" loading="lazy" onerror="this.style.opacity=.25"><div class="tcname">${esc(it.name||'')}</div><div class="tcsub">${esc([it.shoeType,LIFE_SHORT[it.lifestyle]||''].filter(Boolean).join(' · '))}</div>${rankLine(it)?`<div class="tcrank">📈 ${esc(rankLine(it))}</div>`:''}</div>`;
     const first=sorted.slice(0,6).map(card).join('');
     const rest=sorted.slice(6).map(card).join('');
     out+=`<div class="tsec"><div class="gtitle">트렌드 스타일 <span class="k">(${trendItems.length})</span></div><div class="tstrip">${first}<span class="tmore-wrap" style="display:none">${rest}</span></div>`;
@@ -1880,7 +1914,7 @@ function galleryGrid(){
     const on=selMode&&state.galSel.has(g.id);
     const selbox=(selMode&&!isSharedToMe(g))?`<span class="selbox ${on?'on':''}">${on?'✓':''}</span>`:'';
     const delBtn=isSharedToMe(g)?'':`<button class="x" data-galdel="${g.id}">✕</button>`;
-    return`<div class="card ${on?'picked':''}" data-gid="${g.id}">${life}${shared}${mineShared}${selbox}${delBtn}<span class="thumb" style="background-image:url('${thumb(showLogo&&g.logoUrl?g.logoUrl:g.dataUrl,400)}')"></span><div class="meta"><div class="nm">${esc(g.name)}</div><div class="tg">${tg}</div></div></div>`;}).join('');
+    return`<div class="card ${on?'picked':''}" data-gid="${g.id}">${life}${shared}${mineShared}${selbox}${delBtn}<span class="thumb" style="background-image:url('${showLogo&&g.logoUrl?g.logoUrl:g.dataUrl}')"></span><div class="meta"><div class="nm">${esc(g.name)}</div><div class="tg">${tg}</div></div></div>`;}).join('');
 }
 
 /* ---------- compare ---------- */
@@ -2415,10 +2449,13 @@ function wire(){
   const sync=(id,vid,hid,fn)=>{const el=$('#'+id);el.addEventListener('input',()=>{$('#'+vid).textContent=el.value;if(hid)$('#'+hid).textContent=fn(el.value);refreshJSON();});};
   sync('balance','balance-v','balance-h',v=>($('#cat-parent')&&$('#cat-parent').value==='SHOES')?colorHintFor(v):balanceHint(v));sync('sheer','sheer-v','sheer-h',sheerHint);sync('shimmer','shimmer-v','shimmer-h',shimmerHint);
   sync('refmix','refmix-v','refmix-h',refmixHint);
-  $('#balance-h').textContent=balanceHint(35);$('#sheer-h').textContent=sheerHint(20);$('#shimmer-h').textContent=shimmerHint(25);if($('#refmix-h'))$('#refmix-h').textContent=refmixHint(50);
+  if($('#knit-gauge'))sync('knit-gauge','knit-gauge-v','knit-gauge-h',knitGaugeHint);
+  if($('#knit-pat'))$('#knit-pat').addEventListener('input',()=>{$('#knit-pat-v').textContent=$('#knit-pat').value;refreshKnitPanel();refreshJSON();});
+  if($('#knit-detail'))$('#knit-detail').addEventListener('change',()=>refreshJSON());
+  $('#balance-h').textContent=balanceHint(35);$('#sheer-h').textContent=sheerHint(20);$('#shimmer-h').textContent=shimmerHint(25);if($('#refmix-h'))$('#refmix-h').textContent=refmixHint(50);if($('#knit-gauge-h'))$('#knit-gauge-h').textContent=knitGaugeHint(45);
   $('#season').addEventListener('change',renderPicks);
   $('#cat-parent').addEventListener('change',()=>applyCategory(true));
-  $('#cat-sub').addEventListener('change',()=>refreshJSON());
+  $('#cat-sub').addEventListener('change',()=>{refreshKnitPanel();refreshJSON();});
   $('#model-source').addEventListener('change',()=>updatePromptPrev());
   $('#extra').addEventListener('input',()=>refreshJSON());
   $('#designjson').addEventListener('input',()=>{state.jsonDirty=true;updatePromptPrev();});
