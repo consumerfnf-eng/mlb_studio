@@ -934,9 +934,12 @@ function colorBalHint2(v){v=+v;return v<20?'1번 색':v<40?'1번 우세':v<60?'N
 function colorHintFor(v){return twoRefsPicked()?colorBalHint2(v):colorBalHint(v);}
 function shoeBalClauses(J,noun){
   const sb=J.shoe_balance;if(!sb)return[];
+  const subSel=!!((J.category&&J.category.sub)&&SHOE_SUB_DESC[J.category.sub]);
   const out=[];
   if(sb.upper!=null)out.push(`UPPER BALANCE — the upper (panels, material, overlays, collar, tongue, lacing area) is ${balWordFor(sb.upper)}.`);
-  if(sb.sole!=null)out.push(`SOLE BALANCE — the sole unit (midsole height and shape, outsole tooling, stack) is ${balWordFor(sb.sole)}.`);
+  if(sb.sole!=null)out.push(subSel
+    ? `SOLE BALANCE — this slider controls ONLY the outsole tread pattern, tooling and sole material/finish detailing: ${balWordFor(sb.sole)}. The overall sole HEIGHT, mass and shape are FIXED by the selected shoe TYPE (${J.category.sub}) above and must NOT shrink or flatten with this slider.`
+    : `SOLE BALANCE — the sole unit (midsole height and shape, outsole tooling, stack) is ${balWordFor(sb.sole)}.`);
   if(sb.color!=null)out.push(`COLOR BALANCE — ${twoRefsPicked()?colorBalWord2(sb.color):colorBalWord(sb.color)}. This controls color only; do not let it change the silhouette or structure set by the balance settings above.`);
   return out;
 }
@@ -1101,6 +1104,7 @@ function jsonToPrompt(J,plan){
     adoptClauses(J,noun).forEach(c=>S.push(c));
   }
   S.push(`${(cat.parent||'GARMENT')} — ${garmentParts(cat,g).join('; ')}.`);
+  if((cat.parent||'')!=='SHOES'&&cat.sub)S.push(`GARMENT TYPE — the piece MUST clearly read as a ${cat.sub} (${noun}). Treat this selected type as the STRONGER instruction: if a reference implies a different garment type, keep the ${cat.sub} type and borrow only the reference's materials, surface, details and color per the balance settings — do not let the reference turn it into another type.`);
   if((cat.parent||'')!=='SHOES'&&mode!=='preserve')S.push(`SCENE — plain seamless WHITE studio background with clean, even studio lighting (default), unless a specific background is requested.`);
   const m=g.material||{},md=[];
   if(m.fabric_type)md.push(`${m.fabric_type} shell`);
@@ -1128,7 +1132,7 @@ function jsonToPrompt(J,plan){
   if((cat.parent||'')!=='SHOES')S.push(`BRANDING — the garment surface must be COMPLETELY BLANK: no brand logo, no lettering, no woven label, no rubber patch, no emblem anywhere on the chest, sleeve, hood or body. Do NOT render any "MLB" text or any logo-like mark. The brand logo is composited separately in post-production, so keep every surface clean and unbranded.`);
   if(J.notes)S.push(`ADDITIONAL — ${J.notes}.`);
   if((cat.parent||'')==='SHOES'){
-    if(cat.sub&&SHOE_SUB_DESC[cat.sub])S.push(`FOOTWEAR SILHOUETTE INTENT — the target shoe TYPE is ${cat.sub}: ${SHOE_SUB_DESC[cat.sub]}. Keep this overall silhouette and sole-volume intent as the structural starting point; adopt reference materials, paneling and details per the balance settings, but do NOT let the references flatten or override the ${cat.sub} silhouette unless the UPPER/SOLE balance is pushed fully to the reference.`);
+    if(cat.sub&&SHOE_SUB_DESC[cat.sub])S.push(`FOOTWEAR SILHOUETTE — CRITICAL, HIGHEST PRIORITY: the finished shoe MUST have the overall silhouette and SOLE MASS/HEIGHT of a ${cat.sub}: ${SHOE_SUB_DESC[cat.sub]}. This silhouette is DEFINED BY THE SELECTED TYPE (${cat.sub}), NOT by the reference images. Use the reference image(s) ONLY for upper materials, paneling layout, color blocking, stitching, overlays and surface detail — do NOT copy the reference shoe's overall shape, sole height or sole thickness. If a reference is a LOW/THIN/LINER-type shoe but the selected type is ${cat.sub}, you MUST keep the full ${cat.sub} mass and sole volume and rebuild the reference's materials and colors onto that ${cat.sub} silhouette. The UPPER/SOLE balance sliders control only how much of the reference's material/paneling/tread detailing is adopted — they must NEVER shrink the ${cat.sub} sole or flatten the silhouette toward the reference.`);
     S.push(`FOOTWEAR GENERATION RULES — REFERENCE ORIGINALITY: Follow the selected MLB baseline, references, adopted design elements, and balance settings as requested. Materials, mesh, quilting, stitching, functional details, color blocking, and general silhouette may be adopted from references. However, NEVER reproduce one reference shoe as a complete design. Do not copy its full side-panel composition, signature stripe system, exact overlay boundaries, logo geometry, or complete stitching map. Preserve the selected reference features, but change at least 2 recognizable structural elements such as the side-panel direction, overlay connection, mesh boundary, toe panel, heel counter, branding position, or outsole sidewall. Do not create a reference copy with only the logo or color replaced. Recombine the selected elements into a newly arranged MLB product.`);
     S.push(`MARY JANE OPEN-INSTEP RULE — Apply only when the footwear type is Mary Jane or Mary Jane sneaker. The instep must be a real open cutout with no backing material. The wearer's foot or empty interior space must remain clearly visible through the entire instep opening. Laces are allowed only as open-instep lacing: laces may cross from loops or eyelets positioned along the left and right edges; laces must be suspended across the open instep; visible empty space must remain directly underneath the laces; laces may be combined with one transverse Mary Jane strap. Laces must not require or create: a shoe tongue, a tongue-shaped center panel, a padded backing panel, a quilted center panel, a mesh backing layer, a gusset beneath the laces, or a closed sneaker throat. The center of the instep must contain no continuous material from the toe vamp to the collar. Do not interpret "lacing" as conventional sneaker lacing. Use open-edge ghillie-style lacing across an empty instep opening. CRITICAL VISUAL TEST: From the top view, skin or empty interior space must be visible directly beneath and between every lace crossing. If any leather, mesh, quilting, padding, tongue, or vertical panel appears beneath the laces, the construction is incorrect and must be regenerated.`);
   }
@@ -2022,7 +2026,7 @@ function galleryGrid(){
 }
 
 /* ---------- compare ---------- */
-function compareSelect(){const sel=$('#cmp-select');const items=state.gallery.filter(g=>g.sourceLineId&&!g.worn).sort((a,b)=>b.createdAt-a.createdAt);sel.innerHTML=`<option value="">— 선택 —</option>`+items.map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('');}
+function compareSelect(){const sel=$('#cmp-select');const prev=sel.value;const items=state.gallery.filter(g=>!g.worn&&(g.sourceLineId||(g.refIds&&g.refIds.length))).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));sel.innerHTML=`<option value="">— 선택 (최신순) —</option>`+items.map(g=>`<option value="${g.id}">${esc((fmtMon(g.createdAt)?fmtMon(g.createdAt)+' · ':'')+g.name)}</option>`).join('');if(prev&&items.some(g=>g.id===prev))sel.value=prev;}
 function renderCompare(gid){
   const box=$('#cmp-body');if(!gid){box.innerHTML='';return;}
   const g=state.gallery.find(x=>x.id===gid),line=state.lines.find(l=>l.id===g.sourceLineId);
