@@ -835,6 +835,16 @@ const KEEP_OPTS=['model identity','face','hair','pose','background','top','outer
 const REPLACE_OPTS=['outerwear','top','bottoms','footwear'];
 const FABRIC_OPTS=['matte nylon','glossy nylon','silk-touch nylon','taffeta','velvet','wool blend'];
 const SHOE_FABRIC_OPTS=[['스웨이드+메쉬','suede and mesh mix'],['나일론 퀼팅','quilted nylon'],['가죽+메쉬','leather and mesh mix'],['풀그레인 레더','full-grain leather'],['누벅','nubuck suede'],['메쉬 니트','engineered mesh knit'],['캔버스','cotton canvas'],['텍스타일 믹스','technical textile mix']];
+// 슈즈 서브별 실루엣 의도(선택 시 프롬프트에 강하게 반영)
+const SHOE_SUB_DESC={
+  'LOW SNEAKER':'a LOW-PROFILE classic court sneaker — slim, flat, low thin sole, minimal clean upper',
+  'CHUNKY SNEAKER':'a CHUNKY oversized sneaker — a THICK, TALL, exaggerated dad-shoe platform/outsole and a bulky layered voluminous upper (the overall mass must read clearly chunky and heavy)',
+  'RETRO RUNNER':'a RETRO RUNNING silhouette — streamlined sporty profile, moderate wedge sole, suede/mesh paneling',
+  'DAD SHOE':'a DAD-SHOE silhouette — chunky layered outsole with a voluminous multi-panel upper',
+  'MARY JANE':'a MARY JANE — an instep strap over an open instep cutout',
+  'SLIP-ON':'a laceless SLIP-ON silhouette — elastic gore or clean one-piece entry, no laces',
+  'BOOT':'a BOOT silhouette — a higher shaft that covers the ankle'
+};
 const SEASONS=['25FW','26SS','26FW','27SS','27FW','28SS','28FW','29SS','29FW'];
 const GENDER_OPTS=['WOMEN','MEN','UNISEX'];
 const GCAT_OPTS=['OUTER','TOP','BOTTOM','DRESS','ACC','SHOES'];
@@ -1045,7 +1055,7 @@ function refreshJSON(force){if(state.jsonDirty&&!force){updatePromptPrev();retur
 
 /* ---------- JSON → prompt ---------- */
 function garmentParts(cat,g){
-  const parts=[`category ${cat.parent||''} / ${cat.sub||''}`.trim()];
+  const parts=[`category ${cat.parent||''}${cat.sub?' / '+cat.sub:''}`.trim()];
   const add=(k,lab)=>{if(g[k])parts.push(`${lab||k} ${g[k]}`);};
   add('silhouette');add('length');
   if(cat.parent==='OUTERWEAR'){add('neckline');add('collar');add('sleeve');const q=g.quilting||{};const qd=[q.type,q.scale&&q.scale+' scale',q.puffiness&&q.puffiness+' volume'].filter(Boolean).join(', ');if(qd)parts.push('quilting '+qd);}
@@ -1118,6 +1128,7 @@ function jsonToPrompt(J,plan){
   if((cat.parent||'')!=='SHOES')S.push(`BRANDING — the garment surface must be COMPLETELY BLANK: no brand logo, no lettering, no woven label, no rubber patch, no emblem anywhere on the chest, sleeve, hood or body. Do NOT render any "MLB" text or any logo-like mark. The brand logo is composited separately in post-production, so keep every surface clean and unbranded.`);
   if(J.notes)S.push(`ADDITIONAL — ${J.notes}.`);
   if((cat.parent||'')==='SHOES'){
+    if(cat.sub&&SHOE_SUB_DESC[cat.sub])S.push(`FOOTWEAR SILHOUETTE INTENT — the target shoe TYPE is ${cat.sub}: ${SHOE_SUB_DESC[cat.sub]}. Keep this overall silhouette and sole-volume intent as the structural starting point; adopt reference materials, paneling and details per the balance settings, but do NOT let the references flatten or override the ${cat.sub} silhouette unless the UPPER/SOLE balance is pushed fully to the reference.`);
     S.push(`FOOTWEAR GENERATION RULES — REFERENCE ORIGINALITY: Follow the selected MLB baseline, references, adopted design elements, and balance settings as requested. Materials, mesh, quilting, stitching, functional details, color blocking, and general silhouette may be adopted from references. However, NEVER reproduce one reference shoe as a complete design. Do not copy its full side-panel composition, signature stripe system, exact overlay boundaries, logo geometry, or complete stitching map. Preserve the selected reference features, but change at least 2 recognizable structural elements such as the side-panel direction, overlay connection, mesh boundary, toe panel, heel counter, branding position, or outsole sidewall. Do not create a reference copy with only the logo or color replaced. Recombine the selected elements into a newly arranged MLB product.`);
     S.push(`MARY JANE OPEN-INSTEP RULE — Apply only when the footwear type is Mary Jane or Mary Jane sneaker. The instep must be a real open cutout with no backing material. The wearer's foot or empty interior space must remain clearly visible through the entire instep opening. Laces are allowed only as open-instep lacing: laces may cross from loops or eyelets positioned along the left and right edges; laces must be suspended across the open instep; visible empty space must remain directly underneath the laces; laces may be combined with one transverse Mary Jane strap. Laces must not require or create: a shoe tongue, a tongue-shaped center panel, a padded backing panel, a quilted center panel, a mesh backing layer, a gusset beneath the laces, or a closed sneaker throat. The center of the instep must contain no continuous material from the toe vamp to the collar. Do not interpret "lacing" as conventional sneaker lacing. Use open-edge ghillie-style lacing across an empty instep opening. CRITICAL VISUAL TEST: From the top view, skin or empty interior space must be visible directly beneath and between every lace crossing. If any leather, mesh, quilting, padding, tongue, or vertical panel appears beneath the laces, the construction is incorrect and must be regenerated.`);
   }
@@ -1759,7 +1770,7 @@ function renderShoeBal(){
 }
 function applyCategory(reset){
   let parent=$('#cat-parent').value;if(!CATEGORIES[parent]){parent='OUTERWEAR';}const C=CATEGORIES[parent];
-  $('#cat-sub').innerHTML=C.subs.map(s=>(parent==='TOP'&&s==='SWEATER'&&!canSweater())?`<option value="SWEATER" disabled>SWEATER (빌딩중)</option>`:`<option>${s}</option>`).join('');
+  $('#cat-sub').innerHTML=`<option value="">— 자동(서브 미지정) —</option>`+C.subs.map(s=>(parent==='TOP'&&s==='SWEATER'&&!canSweater())?`<option value="SWEATER" disabled>SWEATER (빌딩중)</option>`:`<option>${s}</option>`).join('');
   $('#cat-tag').textContent=`· ${C.noun} 기준`;
   const shoe=parent==='SHOES';
   $('#shoe-ref').style.display=shoe?'block':'none';
